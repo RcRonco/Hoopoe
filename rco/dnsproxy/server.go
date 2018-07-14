@@ -1,25 +1,25 @@
-package rco
+package dnsproxy
 
 import (
 	"fmt"
 	"github.com/miekg/dns"
+	"github.com/golang/glog"
 )
 
-func check(e error) {
+func handleError(e error) {
 	if e != nil {
-		panic(e)
+		glog.Error(e)
 	}
 }
 
 type DNSProxy struct {
 	config Config
-	client *dns.Client
 	server *dns.Server
 	rules []ProxyRule
 }
 
-func (d *DNSProxy) InitConfig() {
-	d.config = BuildConfig("./config.json")
+func (d *DNSProxy) InitConfig(conf_path string) {
+	d.config = BuildConfig(conf_path)
 	d.rules = CompileRules(d.config.Rules)
 }
 
@@ -33,16 +33,17 @@ func (d *DNSProxy) ListenAndServe() error {
 	mux.HandleFunc(".", d.handleQuery)
 
 	d.server = &dns.Server{Addr: d.GetSocketAddress(), Net: "udp", Handler: mux}
+	glog.Infof("Starting server, listening on: %s", d.GetSocketAddress())
 
-	d.client = new(dns.Client)
 	return d.server.ListenAndServe()
 }
 
-func (d *DNSProxy) forwardRequest(msg *dns.Msg) *dns.Msg {
+func (d *DNSProxy) forwardRequest(req *dns.Msg) *dns.Msg {
 	dns_srv := fmt.Sprintf("%s:%d",d.config.Remote_host, d.config.Remote_port)
-	in, _, err := d.client.Exchange(msg, dns_srv)
-	check(err)
-	return in
+	client := new(dns.Client)
+	resp, _, err := client.Exchange(req, dns_srv)
+	handleError(err)
+	return resp
 }
 
 func (d *DNSProxy) handlePtr(resp dns.ResponseWriter, req *dns.Msg) {
@@ -54,7 +55,8 @@ func (d *DNSProxy) handlePtr(resp dns.ResponseWriter, req *dns.Msg) {
 	resp_msg := new(dns.Msg)
 	resp_msg.SetReply(req)
 	resp_msg.Answer = reply.Answer
-	resp.WriteMsg(resp_msg)
+	err := resp.WriteMsg(resp_msg)
+	handleError(err)
 }
 
 func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
@@ -81,5 +83,6 @@ func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
 	resp_msg := new(dns.Msg)
 	resp_msg.SetReply(req)
 	resp_msg.Answer = reply.Answer
-	resp.WriteMsg(resp_msg)
+	err := resp.WriteMsg(resp_msg)
+	handleError(err)
 }

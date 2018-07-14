@@ -1,12 +1,13 @@
 package main
 
 import (
-	"dns_rewriter/rco"
+	"dns_rewriter/rco/dnsproxy"
+	"github.com/golang/glog"
 )
 
-
 func main() {
-	proxy := rco.DNSProxy{}
-	proxy.InitConfig()
+	proxy := dnsproxy.DNSProxy{}
+	proxy.InitConfig("./config.json")
+	glog.Info("Configuration loaded succesfully")
 	proxy.ListenAndServe()
 }

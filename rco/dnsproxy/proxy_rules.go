@@ -1,8 +1,9 @@
-package rco
+package dnsproxy
 
 import (
 	"regexp"
 	"strings"
+	"github.com/golang/glog"
 )
 
 const (
@@ -20,26 +21,32 @@ type ProxyRule struct {
 
 func CompileRules(conf_rules []ProxyRuleConfig) []ProxyRule {
 	rules := []ProxyRule{}
-	for _, cr := range conf_rules {
+	var err error
+	for index, cr := range conf_rules {
 		rule := ProxyRule{}
-		switch (cr.Rule) {
-			case "Allow", "allow", "A":
+		switch (strings.ToLower(cr.Rule)) {
+			case "allow", "a":
 				rule.Rule = Allow
 				break
-			case "Deny", "deny", "D":
+			case "deny", "d":
 				rule.Rule = Deny
 				break
-			case "Rewrite", "rewrite", "RW":
+			case "rewrite", "rw":
 				rule.Rule = Rewrite
 				break
 			default:
-				return []ProxyRule{}
+				glog.Exitf("Unsupported rule type - \"%s\"in rule number %d", cr.Rule, index)
 		}
 
 		if rule.Rule == Rewrite {
 			rule.NewPattern = cr.NewPattern
 		}
-		rule.Regex, _ = regexp.Compile(cr.Pattern)
+
+		rule.Regex,err = regexp.Compile(cr.Pattern)
+		if err != nil {
+			glog.Errorf("Failed to compile rule number: %d\n", index)
+			panic(err)
+		}
 		rules = append(rules, rule)
 	}
 
