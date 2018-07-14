@@ -1,0 +1,14 @@
+{
+  "Port": 8605,
+  "Address": "127.0.0.1",
+  "RemotePort": 53,
+  "RemoteAddress": "8.8.8.8",
+  "ProxyRules": [
+    {
+      "Type": "Rewrite",
+      "Pattern": ".com.$",
+      "NewPattern": ".co.il."
+    }
+  ]
+}
+
