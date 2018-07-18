@@ -8,7 +8,8 @@ Simple DNS Proxy for rewrites, written in Go
 3. <del>Adding Support for Allow and Deny (Black/White List) Rules.<del>
 
 ##### Configuration
-Configuration example for DNSProxy that accepts every domain name that end with ```.com``` (Rule number 2), Blocks every domain and subdomain of mywebsite.com and in if the request didn't get blocked also return result for xxxx.co.il instead of xxxx.com
+Configuration example for DNSProxy that accepts every domain name that end with ```.com``` (Rule number 2), Blocks every domain and subdomain of mywebsite.com and in if the request didn't get blocked also return result for xxxx.co.il instead of xxxx.com.  
+* ``` For proper use of this example please remove the comments in the ProxyRules section```
 
 ```json
 {
