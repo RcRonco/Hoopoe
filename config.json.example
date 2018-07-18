@@ -1,5 +1,5 @@
 {
-  "Port": 8605,
+  "Port": 53,
   "Address": "127.0.0.1",
   "RemotePort": 53,
   "RemoteAddress": "8.8.8.8",
@@ -8,6 +8,14 @@
       "Type": "Rewrite",
       "Pattern": ".com.$",
       "NewPattern": ".co.il."
+    },
+    {
+      "Type": "Allow",
+      "Pattern": ".com.$"
+    },
+    {
+      "Type": "Deny",
+      "Pattern": "mywebsite.com.$"
     }
   ]
 }
