@@ -25,23 +25,23 @@ Configuration Options
 #### Proxy Rules
 Currently the are 4 types of rules supported.
 * ```Pass``` - A rule is set for every query that the pattern matching to, will passed without Rewrites.
-    Parameters:    
-      Type: ```Pass/p```   
-      Pattern: ```Regexp```     
+  Parameters:    
+    * Type: ```Pass/p```   
+    * Pattern: ```Regexp```     
 * ```Allow``` - A Whitelist rule, any request that not match any ```Allow``` rule will be **DROPPED**.    
-    Parameters:   
-      Type: ```Allow/a```    
-      Pattern: ```Regexp```   
+  Parameters:   
+    * Type: ```Allow/a```    
+    * Pattern: ```Regexp```   
 * ```Deny``` - A Blacklist rule, any request that match one of the ```Deny``` rule will be **DROPPED**.   
     When ```Allow``` rule is also defined the Deny rule is used to block specific query inside the Whitelist query space.    
-    Parameters:   
-      Type: ```Deny/d```    
-      Pattern: ```Regexp```   
-* ```Rewrite``` - This rule used to edit the query before it arriving the Remote DNS Server.
-    Parameters:   
-      Type: ```Rewrite```/```rw```    
-      Pattern: ```Regexp```   
-      NewPattern: ```Regexp```   
+  Parameters:
+    * Type: ```Deny/d```    
+    * Pattern: ```Regexp```   
+* ```Rewrite``` - This rule used to edit the query before it arriving the Remote DNS Server.    
+  Parameters:   
+    * Type: ```Rewrite```/```rw```    
+    * Pattern: ```Regexp```   
+    * NewPattern: ```Regexp```   
       
 ##### Configuration example for DNSProxy.
 Start DNS Proxy listen on ```127.0.0.1:53``` and send to upstream server in ```8.8.8.8:53```.
