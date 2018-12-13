@@ -1,28 +1,34 @@
 package dnsproxy
 
 import (
-	"github.com/spf13/viper"
-	"github.com/golang/glog"
 	"os"
 	"fmt"
-	"path/filepath"
 	"strings"
+	"path/filepath"
+	"github.com/spf13/viper"
+	log "github.com/Sirupsen/logrus"
 )
 
 type ProxyRuleConfig struct {
-	Rule string `mapstructure:"Type"`
-	Pattern string `mapstructure:"Pattern"`
+	Rule       string `mapstructure:"Type"`
+	Pattern    string `mapstructure:"Pattern"`
 	NewPattern string `mapstructure:"NewPattern"`
 }
 
 type Config struct {
-	Remote_host string `mapstructure:"RemoteAddress"`
-	Remote_port uint16 `mapstructure:"RemotePort"`
-	Local_addr string `mapstructure:"Address"`
-	Local_port uint16 `mapstructure:"Port"`
-	Rules []ProxyRuleConfig `mapstructure:"ProxyRules"`
-}
+	// Server Net Config
+	RemoteHost   string `mapstructure:"RemoteAddress"`
+	RemotePort   uint16 `mapstructure:"RemotePort"`
+	LocalAddress string `mapstructure:"Address"`
+	LocalPort    uint16 `mapstructure:"Port"`
 
+	// General
+	StatisticsOn bool `mapstructure:"EnableStats"`
+
+	// Rule Config
+	ScanAll bool              `mapstructure:"ScanAll"`
+	Rules   []ProxyRuleConfig `mapstructure:"ProxyRules"`
+}
 
 func DecodeConfig() Config {
 	var conf Config
@@ -31,15 +37,15 @@ func DecodeConfig() Config {
 }
 
 func BuildConfig(file_path string) Config {
-	glog.Infof("Loading config from: %s", file_path)
+	log.Infof("Loading config from: %s", file_path)
 	fstat, err := os.Stat(file_path)
 	if err != nil {
 		fmt.Println(err)
-		glog.Exitf("Failed to access the given config path.")
+		log.Fatal("Failed to access the given config path.")
 	}
 	if fstat.IsDir() {
 		viper.SetConfigName("config")
-		viper.SetConfigType("json")
+		viper.SetConfigType("YAML")
 		viper.AddConfigPath(file_path)
 	} else {
 		viper.SetConfigFile(filepath.Base(file_path))
@@ -50,10 +56,12 @@ func BuildConfig(file_path string) Config {
 	viper.SetDefault("RemotePort", 53)
 	viper.SetDefault("Address", "127.0.0.1")
 	viper.SetDefault("LocalPort", 53)
+	viper.SetDefault("EnableStats", false)
+	viper.SetDefault("ScanAll", true)
 
 	err = viper.ReadInConfig()
 	if err != nil {
-		glog.Exitln(err)
+		log.Fatalln(err)
 	}
 	return DecodeConfig()
 }

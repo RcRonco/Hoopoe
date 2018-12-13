@@ -1,13 +1,25 @@
 package main
 
 import (
-	"dns_rewriter/rco/dnsproxy"
-	"github.com/golang/glog"
+	flag  "github.com/spf13/pflag"
+	log "github.com/Sirupsen/logrus"
+	"github.com/RcRonco/dns_proxy/rco/dnsproxy"
 )
 
+// TODO: Fix logging before flag.Parse Erorrs
+// TODO: Fix EnableStats option ignored
+
 func main() {
+	configPath := flag.String("config-path", "config.yml", "Configuration file path")
+	flag.Parse()
+
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+		ForceColors: true,
+	})
+
 	proxy := dnsproxy.DNSProxy{}
-	proxy.InitConfig("./config.json")
-	glog.Info("Configuration loaded succesfully")
+	proxy.InitConfig(*configPath)
+	log.Info("Configuration loaded succesfully")
 	proxy.ListenAndServe()
 }

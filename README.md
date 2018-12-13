@@ -8,34 +8,31 @@ Simple DNS Proxy for rewrites, written in Go
 3. <del>Adding Support for Allow and Deny (Black/White List) Rules.<del>
 
 ##### Configuration
-Configuration example for DNSProxy that accepts every domain name that end with ```.com``` (Rule number 2), Blocks every domain and subdomain of mywebsite.com and in if the request didn't get blocked also return result for xxxx.co.il instead of xxxx.com.  
-* ``` For proper use of this example please remove the comments in the ProxyRules section```
+## Configuration example for DNSProxy.
+Start DNS Proxy listen on ```127.0.0.1:53``` and send to upstream server in ```8.8.8.8:53```.
 
-```json
-{
-  "Port": 53,
-  "Address": "127.0.0.1",
-  "RemotePort": 53,
-  "RemoteAddress": "8.8.8.8",
-  "ProxyRules": [
-    // "Change every query from xxx.com into xxx.co.il"
-    {
-      "Type": "Rewrite",
-      "Pattern": ".com.$",
-      "NewPattern": ".co.il."
-    },
-    // "Allow request that only end with .com"
-    {
-      "Type": "Allow",
-      "Pattern": ".com.$"
-    },
-    // "Block mywebsite.com"
-    {
-      "Type": "Deny",
-      "Pattern": "mywebsite.com.$"
-    }
-  ]
-}
+#### Rules
+1. Rewrite every *.com into *.co.il
+2. Accepts every request for domain name that end with ```.com```
+3. Blocks every request for domain and subdomain of mywebsite.com
 
-
+```yaml
+---
+Address: "127.0.0.1"
+Port: 8601
+RemoteAddress: "127.0.0.1"
+RemotePort: 8600
+EnableStats: true
+ScanAll: true
+ProxyRules:
+  - Type: "Rewrite"
+    Pattern: ".ronco.$"
+    NewPattern: ".service.consul."
+  - Type: "Rewrite"
+    Pattern: ".meme.$"
+    NewPattern: ".query.consul."
+  - Type: "Allow"
+    Pattern: ".ronco.$"
+  - Type: "Deny"
+    Pattern: "mywebsite.com.$"
 ```

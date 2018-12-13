@@ -1,0 +1,18 @@
+---
+Address: "127.0.0.1"
+Port: 8601
+RemoteAddress: "127.0.0.1"
+RemotePort: 8600
+EnableStats: true
+ScanAll: true
+ProxyRules:
+  - Type: "Rewrite"
+    Pattern: ".ronco.$"
+    NewPattern: ".service.consul."
+  - Type: "Rewrite"
+    Pattern: ".meme.$"
+    NewPattern: ".query.consul."
+  - Type: "Allow"
+    Pattern: ".ronco.$"
+  - Type: "Deny"
+    Pattern: "mywebsite.com.$"
