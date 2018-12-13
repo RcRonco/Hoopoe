@@ -43,10 +43,10 @@ Currently the are 4 types of rules supported.
       Pattern: ```Regexp```   
       NewPattern: ```Regexp```   
       
-###### Configuration example for DNSProxy.
+##### Configuration example for DNSProxy.
 Start DNS Proxy listen on ```127.0.0.1:53``` and send to upstream server in ```8.8.8.8:53```.
 
-####### Rules
+###### Rules
 1. Rewrite every *.com into *.co.il
 2. Accepts every request for domain name that end with ```.com```
 3. Blocks every request for domain and subdomain of mywebsite.com
