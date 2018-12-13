@@ -1,4 +1,4 @@
-# DNS Proxy
+# Hoopoe - DNS Proxy
 ### Description
 Simple DNS Proxy for rewrites, written in Go
 
