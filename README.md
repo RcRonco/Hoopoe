@@ -24,7 +24,7 @@ Configuration Options
 
 #### Proxy Rules
 Currently the are 4 types of rules supported.
-* ```Pass``` - A rule is set for every query that the pattern matching to, will passed without Rewrites.
+* ```Pass``` - A rule is set for every query that the pattern matching to, will passed without any other rule type.
   Parameters:    
     * Type: ```Pass/p```   
     * Pattern: ```Regexp```     
