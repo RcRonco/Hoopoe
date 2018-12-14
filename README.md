@@ -1,15 +1,37 @@
 # Hoopoe - DNS Proxy
-### Description
+## Description
 Simple DNS Proxy for rewrites, written in Go
 
-### TODO:
+### Install and Run
+###### Build
+
+```shell
+go get github.com/RcRonco/Hoopoe
+cd $GOPATH/src/github.com/RcRonco/Hoopoe
+go build -o hoopoe main.go
+```
+
+###### Install
+* After finish install stage, edit the config.yml for your need.
+
+```shell
+cp ./hoopoe /usr/local/bin/hoopoe
+mkdir /etc/hoopoe.d
+cp $GOPATH/src/github.com/RcRonco/Hoopoe/config.yml.example /etc/hoopoe.d/config.yml
+```
+###### Run
+```shell
+hoopoe --config-path=/etc/hoopoe.d/config.yml
+```
+
+## TODO:
 1. <del>Add Logging and Tracing Capabilities<del> 
 2. <del>Benchmark Latency<del>
 3. <del>Adding Support for Allow and Deny (Black/White List) Rules.<del>
 4. Add support for cobra cmd
 6. Rebrand the project :/
   
-### Configuration
+## Configuration
 Configuration Options
 
 | Name    | Description    | Required    | Default    | Values | Examples |
@@ -43,7 +65,7 @@ Currently the are 4 types of rules supported.
     * Pattern: ```Regexp```   
     * NewPattern: ```Regexp```   
       
-##### Configuration example for DNSProxy.
+## Example
 Start DNS Proxy listen on ```127.0.0.1:53``` and send to upstream server in ```8.8.8.8:53```.
 
 ###### Rules
