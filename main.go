@@ -3,7 +3,7 @@ package main
 import (
 	flag  "github.com/spf13/pflag"
 	log "github.com/Sirupsen/logrus"
-	"github.com/RcRonco/dns_proxy/rco/dnsproxy"
+	"github.com/RcRonco/Hoopoe/rco/dnsproxy"
 )
 
 // TODO: Fix EnableStats option ignored
