@@ -25,15 +25,13 @@ cp $GOPATH/src/github.com/RcRonco/Hoopoe/config.yml.example /etc/hoopoe.d/config
 hoopoe --config-path=/etc/hoopoe.d/config.yml
 ```
 
-## TODO:
-1. <del>Add Logging and Tracing Capabilities<del> 
-2. <del>Benchmark Latency<del>
-3. <del>Adding Support for Allow and Deny (Black/White List) Rules.<del>
-4. Add support for cobra cmd
-6. Rebrand the project :/
+### Flags
+| Name    | Description    | Required    | Default    | Values | Examples |
+|:--|:--|:-:|:-:|:-:|:--|
+| --config-path | Configuration folder | No | ```./config.yml``` | POSIX-PATH format | --config-path=/etc/hoopoe.d/config.yml |
   
 ## Configuration
-Configuration Options
+Configuration Options for the YAML configuration file.
 
 | Name    | Description    | Required    | Default    | Values | Examples |
 |:--|:--|:-:|:-:|:-:|:--|
@@ -94,3 +92,12 @@ ProxyRules:
   - Type: "Deny"
     Pattern: "mywebsite.com.$"
 ```
+
+## TODO:
+[x] - Add Logging and Tracing Capabilities
+[x] - Benchmark Latency
+[x] - Adding Support for Allow and Deny (Black/White List) Rules.
+[ ] - Add Caching for Rewrite
+[ ] - Add Access log
+[ ] - Add support for cobra cmd
+[ ] - Rebrand the project :/
