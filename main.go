@@ -6,7 +6,6 @@ import (
 	"github.com/RcRonco/dns_proxy/rco/dnsproxy"
 )
 
-// TODO: Fix logging before flag.Parse Erorrs
 // TODO: Fix EnableStats option ignored
 
 func main() {
