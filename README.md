@@ -94,10 +94,10 @@ ProxyRules:
 ```
 
 ## TODO:
-[x] - Add Logging and Tracing Capabilities
-[x] - Benchmark Latency
-[x] - Adding Support for Allow and Deny (Black/White List) Rules.
-[ ] - Add Caching for Rewrite
-[ ] - Add Access log
-[ ] - Add support for cobra cmd
-[ ] - Rebrand the project :/
+* [x] - Add Logging and Tracing Capabilities  
+* [x] - Benchmark Latency
+* [x] - Adding Support for Allow and Deny (Black/White List) Rules.
+* [ ] - Add Caching for Rewrite
+* [ ] - Add Access log
+* [ ] - Add support for cobra cmd
+* [ ] - Rebrand the project :/
