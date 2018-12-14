@@ -12,13 +12,14 @@ go build -o hoopoe main.go
 ```
 
 ###### Install
-* After finish install stage, edit the config.yml for your need.
 
 ```shell
 cp ./hoopoe /usr/local/bin/hoopoe
 mkdir /etc/hoopoe.d
 cp $GOPATH/src/github.com/RcRonco/Hoopoe/config.yml.example /etc/hoopoe.d/config.yml
 ```
+* Edit ```config.yml``` for your need.
+
 ###### Run
 ```shell
 hoopoe --config-path=/etc/hoopoe.d/config.yml
