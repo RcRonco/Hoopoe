@@ -107,7 +107,10 @@ func (re *RuleEngine) Apply(query string) (Result, string) {
 		// Check if the rule Blocked
 		if result.Code == ALLOWED { break }
 	}
-	if result.Code == BLOCKED || result.Code == ERROR { return result, "" }
+
+	// Check if the query blocked by whitelist rule
+	if len(re.whiteList) > 0 && result.Code == BLOCKED { return result, "" }
+	if result.Code == ERROR { return result, result.Err }
 
 	// Apply DenyRule rules
 	for _, rule := range re.blackList {

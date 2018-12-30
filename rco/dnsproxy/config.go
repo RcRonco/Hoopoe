@@ -1,13 +1,18 @@
 package dnsproxy
 
 import (
-	"os"
 	"fmt"
-	"strings"
-	"path/filepath"
-	"github.com/spf13/viper"
 	log "github.com/Sirupsen/logrus"
+	"github.com/spf13/viper"
+	"os"
+	"path/filepath"
+	"strings"
 )
+
+type TelemetryConfig struct {
+	Enabled bool   `mapstructure:"Enabled"`
+	Address string `mapstructure:"Address"`
+}
 
 type ProxyRuleConfig struct {
 	Rule       string `mapstructure:"Type"`
@@ -17,13 +22,13 @@ type ProxyRuleConfig struct {
 
 type Config struct {
 	// Server Net Config
-	RemoteHost   string `mapstructure:"RemoteAddress"`
-	RemotePort   uint16 `mapstructure:"RemotePort"`
-	LocalAddress string `mapstructure:"Address"`
-	LocalPort    uint16 `mapstructure:"Port"`
+	RemoteHosts  []string `mapstructure:"RemoteAddresses"`
+	LocalAddress string   `mapstructure:"Address"`
 
 	// General
-	StatisticsOn bool `mapstructure:"EnableStats"`
+	Telemetry  		TelemetryConfig	`mapstructure:"Telemetry"`
+	AccessLog     	bool			`mapstructure:"EnableAccessLog"`
+	AccessLogPath	string			`mapstructure:"AccessLogPath"`
 
 	// Rule Config
 	ScanAll bool              `mapstructure:"ScanAll"`
@@ -53,10 +58,11 @@ func BuildConfig(file_path string) Config {
 	}
 
 	viper.AddConfigPath(filepath.Dir(file_path))
-	viper.SetDefault("RemotePort", 53)
-	viper.SetDefault("Address", "127.0.0.1")
-	viper.SetDefault("LocalPort", 53)
-	viper.SetDefault("EnableStats", false)
+	viper.SetDefault("Address", "127.0.0.1:53")
+	viper.SetDefault("Telemetry.Enabled", false)
+	viper.SetDefault("Telemetry.Address", "127.0.0.1:8080")
+	viper.SetDefault("EnableAccessLog", true)
+	viper.SetDefault("AccessLogPath", "/var/log/hopoe/access.log")
 	viper.SetDefault("ScanAll", true)
 
 	err = viper.ReadInConfig()

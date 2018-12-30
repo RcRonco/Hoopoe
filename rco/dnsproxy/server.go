@@ -1,10 +1,11 @@
 package dnsproxy
 
 import (
-	"fmt"
-	"time"
-	"github.com/miekg/dns"
 	log "github.com/Sirupsen/logrus"
+	"github.com/armon/go-metrics"
+	"github.com/miekg/dns"
+	"os"
+	"time"
 )
 
 // Handle errors that will not cause crash of the system.
@@ -14,48 +15,41 @@ func handleError(e error, ln int) {
 	}
 }
 
-type Stats struct {
-	TotalRequests int64
-	TotalLatency time.Duration
-	UpstreamLatency time.Duration
-	StartTime time.Time
-}
-
 // Proxy server implementation
 type DNSProxy struct {
-	config Config
-	server *dns.Server
-	rules  RuleEngine
-	stats  Stats
-}
-
-func (s *Stats) logStats() {
-	totalAvgLatency := float64(s.TotalLatency.Nanoseconds()) / float64((s.TotalRequests * 1000))
-	upstreamAvgLatency := float64(s.UpstreamLatency.Nanoseconds()) / float64((s.TotalRequests * 1000))
-	log.Infof("DNSProxy Server Statistics:\n" +
-					   "\tTotal Requests: %d\n" +
-					   "\tLatency: (Average)\n" +
-					   "\t  Total: %fus\tProxy: %fus\tDNS Backend: %fus\n" +
-					   "\tStart time: %s\n" +
-					   "\tUp time: %s", s.TotalRequests, totalAvgLatency,
-					   	totalAvgLatency-upstreamAvgLatency, upstreamAvgLatency,
-					   	s.StartTime.String(), time.Since(s.StartTime).String())
+	config    Config
+	server    *dns.Server
+	rules     RuleEngine
+	accessLog *log.Logger
+	telemetry *TelemetryServer
 }
 
 // Initialize the config of the DNSProxy from json file
-func (d *DNSProxy) InitConfig(conf_path string) {
+func (d *DNSProxy) Init(confPath string) {
 	// Load the config from json file
-	d.config = BuildConfig(conf_path)
+	d.config = BuildConfig(confPath)
 
 	// Compile all the rules from the config
 	err := d.rules.CompileRules(d.config.Rules)
 	d.rules.SetScanAll(d.config.ScanAll)
 	handleError(err, 52)
-}
 
-// Return the address and port of the server
-func (d *DNSProxy) GetSocketAddress() string {
-	return fmt.Sprintf("%s:%d",d.config.LocalAddress, d.config.LocalPort)
+	// Enable Telemetry
+	if d.config.Telemetry.Enabled {
+		d.telemetry = NewTelemetryServer(&d.config.Telemetry)
+		d.telemetry.Init()
+	}
+
+	// Enable Access Log
+	if d.config.AccessLog {
+		d.accessLog = log.New()
+		file, err := os.OpenFile(d.config.AccessLogPath, os.O_CREATE|os.O_WRONLY, 0666)
+		if err == nil {
+			d.accessLog.Out = file
+		} else {
+			log.Errorf("Failed to log to file, %s", d.config.AccessLogPath)
+		}
+	}
 }
 
 // Bind to port and start handle DNS requests
@@ -63,21 +57,15 @@ func (d *DNSProxy) ListenAndServe() error {
 	// Set handlers
 	mux := dns.NewServeMux()
 	mux.HandleFunc("arpa.", d.handlePtr)
-
-
-	if !d.config.StatisticsOn {
-		log.Info("Statistics: enabled.")
-		d.stats = Stats{0,0,
-					   0, time.Now()}
-		mux.HandleFunc(".", d.handleQueryStats)
-	} else {
-		log.Info("Statistics: disabled.")
-		mux.HandleFunc(".", d.handleQuery)
-	}
+	mux.HandleFunc(".", d.handleQuery)
 
 	// Build the DNS server
-	d.server = &dns.Server{Addr: d.GetSocketAddress(), Net: "udp", Handler: mux}
-	log.Infof("Starting server, listening on: %s", d.GetSocketAddress())
+	d.server = &dns.Server{Addr: d.config.LocalAddress, Net: "udp", Handler: mux}
+	log.Infof("Starting server, listening on: %s", d.config.LocalAddress)
+
+	if d.config.Telemetry.Enabled {
+		go d.telemetry.ListenAndServe()
+	}
 
 	// Start the DNS server
 	return d.server.ListenAndServe()
@@ -85,13 +73,25 @@ func (d *DNSProxy) ListenAndServe() error {
 
 // Internal function of passing requests to the upstream DNS server
 func (d *DNSProxy) forwardRequest(req *dns.Msg) *dns.Msg {
+	// Profiling the latency of the upstream servers
+	if d.config.Telemetry.Enabled {
+		defer metrics.MeasureSince([]string{"UpstreamServer", "Latency"}, time.Now())
+	}
+
 	// Create a DNS client
 	client := new(dns.Client)
 
 	// Make a request to the upstream server
-	resp, _, err := client.Exchange(req, fmt.Sprintf("%s:%d",d.config.RemoteHost, d.config.RemotePort))
-	handleError(err, 92)
-	return resp
+	for _, remoteHost := range d.config.RemoteHosts {
+		resp, _, err := client.Exchange(req, remoteHost)
+		if err != nil {
+			metrics.SetGauge([]string{remoteHost, "DROPS"}, 1)
+		} else if len(resp.Answer) > 0 {
+			return resp
+		}
+	}
+
+	return nil
 }
 
 // handle PTR records
@@ -112,8 +112,8 @@ func (d *DNSProxy) handlePtr(resp dns.ResponseWriter, req *dns.Msg) {
 	handleError(err, 111)
 }
 
-// handle Query requests that are not PTR
-func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
+// build upstream message by applying Proxy rules
+func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.Msg {
 	// Copy the message for applying rules on it
 	upstreamMsg := new(dns.Msg)
 	req.CopyTo(upstreamMsg)
@@ -121,13 +121,12 @@ func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
 
 	// Run on every query entry in the request
 	for _, query := range req.Question {
-		name := query.Name
-		res, name := d.rules.Apply(name)
+		res, name := d.rules.Apply(query.Name)
 
 		// Check if the query has been blocked by white/black list rule
 		if res.Code == BLOCKED {
 			d.returnBlocked(resp, req)
-			return
+			return nil
 		}
 
 		// Append new Question the the message
@@ -135,66 +134,47 @@ func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
 		upstreamMsg.Question = append(upstreamMsg.Question, rewrittenQuery)
 	}
 
-	// Make a request to the upstream server
-	reply := d.forwardRequest(upstreamMsg)
+	return upstreamMsg
+}
 
+// Build response message for server message
+func (d *DNSProxy) buildResponseMsg(clientRequest *dns.Msg, upstreamReply *dns.Msg) *dns.Msg {
 	// Set the original name in the response
-	for index, q := range req.Question {
-		reply.Answer[index].Header().Name = q.Name
+	for index, q := range clientRequest.Question {
+		upstreamReply.Answer[index].Header().Name = q.Name
 	}
 
 	respMsg := new(dns.Msg)
-	respMsg.SetReply(req)
-	respMsg.Answer = reply.Answer
-	err := resp.WriteMsg(respMsg)
-	handleError(err, 149)
+	respMsg.SetReply(clientRequest)
+	respMsg.Answer = upstreamReply.Answer
+
+	return respMsg
 }
 
 // handle Query requests that are not PTR
-func (d *DNSProxy) handleQueryStats(resp dns.ResponseWriter, req *dns.Msg) {
-	StartProcessingTime := time.Now()
-	// Copy the message for applying rules on it
-	upstreamMsg := new(dns.Msg)
-	req.CopyTo(upstreamMsg)
-	upstreamMsg.Question = []dns.Question{}
-
-	// Run on every query entry in the request
-	for _, query := range req.Question {
-		name := query.Name
-		res, name := d.rules.Apply(name)
-
-		// Check if the query has been blocked by white/black list rule
-		if res.Code == BLOCKED {
-			d.returnBlocked(resp, req)
-			return
-		}
-
-		// Append new Question the the message
-		rewrittenQuery := dns.Question{ Name: name, Qtype: query.Qtype, Qclass: query.Qclass}
-		upstreamMsg.Question = append(upstreamMsg.Question, rewrittenQuery)
+func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
+	// Profiling the latency of the upstream servers
+	if d.config.Telemetry.Enabled {
+		defer metrics.MeasureSince([]string{"Request", "Latency"}, time.Now())
 	}
 
-	UpstreamStartTime := time.Now()
+	// Access Log
+	if d.config.AccessLog {
+		d.accessLog.Infof("%s Access Record %s", resp.RemoteAddr().String(), req.Question[0].String())
+	}
+
+	// Copy the message for applying rules on it
+	upstreamMsg := d.buildUpstreamMsg(resp, req)
+	if upstreamMsg == nil {
+		return
+	}
+
 	// Make a request to the upstream server
 	reply := d.forwardRequest(upstreamMsg)
-	UpstreamDuration := time.Since(UpstreamStartTime)
-	// Set the original name in the response
-	for index, q := range req.Question {
-		reply.Answer[index].Header().Name = q.Name
-	}
 
-	respMsg := new(dns.Msg)
-	respMsg.SetReply(req)
-	respMsg.Answer = reply.Answer
+	respMsg := d.buildResponseMsg(req, reply)
 	err := resp.WriteMsg(respMsg)
 	handleError(err, 189)
-
-	d.stats.TotalLatency += time.Since(StartProcessingTime)
-	d.stats.UpstreamLatency += UpstreamDuration
-	d.stats.TotalRequests++
-	if d.stats.TotalRequests % 50 == 0 {
-		d.stats.logStats()
-	}
 }
 
 // Build and send REFUSED response message to client

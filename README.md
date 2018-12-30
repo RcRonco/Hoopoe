@@ -39,7 +39,8 @@ Configuration Options for the YAML configuration file.
 | Port | Listening UDP Port | No | ```53``` | 1-65535 | 12021 |
 | RemoteAddress | Remote DNS Server IP Address | No | ```127.0.0.1``` | IP Address | 8.8.8.8 |
 | RemotePort | Remote DNS Server Port | No | ```53``` | 1-65535 | 8600 |
-| EnableStats | Enable Performance stats in logs, **can cause performance degration** | No | ```false``` | ```true/false```| ``` true``` |
+| Telemetry.Enabled | Enable Performance stats, **can cause performance degradation** | No | ```false``` | ```true/false```| ``` true``` |
+| Telemetry.Address | Stats HTTP address, **can cause performance degradation** | No | ```127.0.0.1:8080``` | IP Address and Port | ``` 0.0.0.0:80``` |
 | ScanAll | Enable ScallAll mode, which will apply all rewrite rules on query instead of the first one to match **can cause performance degration** | No | ```true``` | ```true/false```| ``` false``` | 
 | ProxyRules | Rules that will Rewrite/Deny/Allow/Pass the query  | Yes | - | ```[]{Type, Pattern, NewPattern}``` | Check the example below |
 
@@ -74,11 +75,13 @@ Start DNS Proxy listen on ```127.0.0.1:53``` and send to upstream server in ```8
 
 ```yaml
 ---
-Address: "127.0.0.1"
-Port: 8601
-RemoteAddress: "127.0.0.1"
-RemotePort: 8600
-EnableStats: true
+Address: "127.0.0.1:8601"
+RemoteAddresses:
+  - "127.0.0.1:8600"
+  - "8.8.8.8:53"
+Telemetry:
+  Enabled: true
+  Address: "0.0.0.0:80"
 ScanAll: true
 ProxyRules:
   - Type: "Rewrite"
