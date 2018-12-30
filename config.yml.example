@@ -1,9 +1,11 @@
 ---
-Address: "127.0.0.1"
-Port: 8601
-RemoteAddress: "127.0.0.1"
-RemotePort: 8600
-EnableStats: true
+Address: "127.0.0.1:8601"
+RemoteAddresses:
+  - "127.0.0.1:8600"
+  - "8.8.8.8:53"
+Telemetry:
+  Enabled: true
+  Address: "0.0.0.0:80"
 ScanAll: true
 ProxyRules:
   - Type: "Rewrite"

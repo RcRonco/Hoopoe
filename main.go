@@ -1,12 +1,10 @@
 package main
 
 import (
-	flag  "github.com/spf13/pflag"
-	log "github.com/Sirupsen/logrus"
 	"github.com/RcRonco/Hoopoe/rco/dnsproxy"
+	log "github.com/Sirupsen/logrus"
+	flag "github.com/spf13/pflag"
 )
-
-// TODO: Fix EnableStats option ignored
 
 func main() {
 	configPath := flag.String("config-path", "config.yml", "Configuration file path")
@@ -18,7 +16,10 @@ func main() {
 	})
 
 	proxy := dnsproxy.DNSProxy{}
-	proxy.InitConfig(*configPath)
-	log.Info("Configuration loaded succesfully")
-	proxy.ListenAndServe()
+	proxy.Init(*configPath)
+	log.Info("Configuration loaded successfully")
+
+	if err := proxy.ListenAndServe(); err != nil {
+		log.Errorf("%d: %s", 25, err.Error())
+	}
 }
