@@ -35,14 +35,16 @@ Configuration Options for the YAML configuration file.
 
 | Name    | Description    | Required    | Default    | Values | Examples |
 |:--|:--|:-:|:-:|:-:|:--|
-| Address | Listening IP Address | No | ```127.0.0.1``` | IP Address | 192.168.1.5 |
-| Port | Listening UDP Port | No | ```53``` | 1-65535 | 12021 |
-| RemoteAddress | Remote DNS Server IP Address | No | ```127.0.0.1``` | IP Address | 8.8.8.8 |
-| RemotePort | Remote DNS Server Port | No | ```53``` | 1-65535 | 8600 |
+| Address | Listening IP Address and Port | No | ```127.0.0.1:53``` | IP Address | 192.168.1.5:53 |
+| RemoteAddresses | Remote DNS Servers | No | ```[127.0.0.1:8600, 1.1.1.1:53]``` | IP Address | 8.8.8.8:53 |
 | Telemetry.Enabled | Enable Performance stats, **can cause performance degradation** | No | ```false``` | ```true/false```| ``` true``` |
 | Telemetry.Address | Stats HTTP address, **can cause performance degradation** | No | ```127.0.0.1:8080``` | IP Address and Port | ``` 0.0.0.0:80``` |
 | ScanAll | Enable ScallAll mode, which will apply all rewrite rules on query instead of the first one to match **can cause performance degration** | No | ```true``` | ```true/false```| ``` false``` | 
 | ProxyRules | Rules that will Rewrite/Deny/Allow/Pass the query  | Yes | - | ```[]{Type, Pattern, NewPattern}``` | Check the example below |
+
+#### Telemetry
+Hoopoe support exporting performance telemetry to prometheus with HTTP endpoint.    
+Hoopoe metrics access by the ```/metrics``` endpoint.
 
 #### Proxy Rules
 Currently the are 4 types of rules supported.
@@ -100,7 +102,5 @@ ProxyRules:
 * [x] - Add Logging and Tracing Capabilities  
 * [x] - Benchmark Latency
 * [x] - Adding Support for Allow and Deny (Black/White List) Rules.
-* [ ] - Add Caching for Rewrite
-* [ ] - Add Access log
-* [ ] - Add support for cobra cmd
+* [x] - Add Access log
 * [ ] - Rebrand the project :/
