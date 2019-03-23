@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	AllowRule   int8 = 1 << iota
-	DenyRule    int8 = 1 << iota
-	RewriteRule int8 = 1 << iota
-	PassRule    int8 = 1 << iota
+	AllowRule   int8 =  iota
+	DenyRule
+	RewriteRule
+	PassRule
 )
 
 const (
