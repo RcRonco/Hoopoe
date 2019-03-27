@@ -19,7 +19,7 @@ func handleError(e error, ln int) {
 type DNSProxy struct {
 	config    Config
 	server    *dns.Server
-	rules     RuleEngine
+	rules     *RuleEngine
 	accessLog *log.Logger
 	telemetry *TelemetryServer
 }
@@ -30,9 +30,8 @@ func (d *DNSProxy) Init(confPath string) {
 	d.config = BuildConfig(confPath)
 
 	// Compile all the rules from the config
-	err := d.rules.CompileRules(d.config.Rules)
+	d.rules = NewEngine(d.config.Rules)
 	d.rules.SetScanAll(d.config.ScanAll)
-	handleError(err, 52)
 
 	// Enable Telemetry
 	if d.config.Telemetry.Enabled {
@@ -124,7 +123,7 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 		res, name := d.rules.Apply(query.Name)
 
 		// Check if the query has been blocked by white/black list rule
-		if res.Code == BLOCKED {
+		if res == BLOCKED {
 			d.returnBlocked(resp, req)
 			return nil
 		}
