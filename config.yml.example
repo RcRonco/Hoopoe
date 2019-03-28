@@ -1,20 +1,19 @@
 ---
 Address: "127.0.0.1:8601"
 RemoteAddresses:
-  - "127.0.0.1:8600"
   - "8.8.8.8:53"
 Telemetry:
   Enabled: true
   Address: "0.0.0.0:80"
 ScanAll: true
 ProxyRules:
-  - Type: "Rewrite"
-    Pattern: ".ronco.$"
-    NewPattern: ".service.consul."
-  - Type: "Rewrite"
-    Pattern: ".meme.$"
-    NewPattern: ".query.consul."
-  - Type: "Allow"
-    Pattern: ".ronco.$"
-  - Type: "Deny"
-    Pattern: "mywebsite.com.$"
+  # Will Rewrite every query starting with ronco to start with jack
+  - Rewrite PREFIX ronco jack
+  # Will allow only queries ends with .com
+  - Allow SUFFIX .com
+  # Will deny every query end with malicious.com
+  - Deny SUFFIX malicious.com
+  # Will pass with out any processing every query contains MyOrg
+  - Pass REGEXP .*\.MyOrg\..*
+  # Will rewrite every query ends with myorg.com to service.consul
+  - Rewrite SUFFIX myorg.com service.consul
