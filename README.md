@@ -49,25 +49,31 @@ Hoopoe support exporting performance telemetry to prometheus with HTTP endpoint.
 Hoopoe metrics access by the ```/metrics``` endpoint.
 
 #### Proxy Rules
-Currently the are 4 types of rules supported.
+Rules defined in configuration file, their job is to Act in predefined action for specified DNS query.  
+Every rule must be in the format: TYPE ACTION PATTERN OPTIONS  
+Currently the are 4 types of rules supported.  
 * ```Pass``` - A rule is set for every query that the pattern matching to, will passed without any other rule type.
   Parameters:    
-    * Type: ```Pass/p```   
-    * Pattern: ```Regexp```     
+    * Action: ```All string matching actions```   
+    * Pattern: ```string```
+    * Options: None  
 * ```Allow``` - A Whitelist rule, any request that not match any ```Allow``` rule will be **DROPPED**.    
   Parameters:   
-    * Type: ```Allow/a```    
-    * Pattern: ```Regexp```   
+    * Action: ```All string matching actions```   
+    * Pattern: ```string```
+    * Options: None     
 * ```Deny``` - A Blacklist rule, any request that match one of the ```Deny``` rule will be **DROPPED**.   
     When ```Allow``` rule is also defined the Deny rule is used to block specific query inside the Whitelist query space.    
   Parameters:
-    * Type: ```Deny/d```    
-    * Pattern: ```Regexp```   
+    * Action: ```All string matching actions```   
+    * Pattern: ```string```
+    * Options: None     
 * ```Rewrite``` - This rule used to edit the query before it arriving the Remote DNS Server.    
   Parameters:   
-    * Type: ```Rewrite```/```rw```    
-    * Pattern: ```Regexp```   
-    * NewPattern: ```Regexp```   
+    * Action: ```All string matching actions```   
+    * Pattern: ```string```
+    * Options: 
+        * Replacement: ```string``` - string to replace pattern with
       
 ## Example
 Start DNS Proxy listen on ```127.0.0.1:8601``` and send to upstream server in ```8.8.8.8:53```.
