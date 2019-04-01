@@ -34,20 +34,20 @@ const (
 var (
 	ActionMap = map[string]int8{
 		"PREFIX": PREFIX,
-		"SUfFIX": SUFFIX,
+		"SUFFIX": SUFFIX,
 		"SUBSTRING": SUBSTRING,
-		"REGEX": REGEXP,
+		"REGEXP": REGEXP,
 	}
 
 	RuleTypeMap = map[string]int8{
-		"pass": PassType,
-		"p": PassType,
-		"rewrite": RewriteType,
-		"rw": RewriteType,
-		"allow": AllowType,
-		"a": AllowType,
-		"deny": DenyType,
-		"d": DenyType,
+		"PASS": PassType,
+		"P": PassType,
+		"REWRITE": RewriteType,
+		"RW": RewriteType,
+		"ALLOW": AllowType,
+		"A": AllowType,
+		"DENY": DenyType,
+		"D": DenyType,
 	}
 )
 
@@ -74,18 +74,22 @@ func NewEngine(rawRules []string) *RuleEngine {
 	engine := new(RuleEngine)
 	engine.rules = make(map[int8][]Rule)
 
+	log.Info("Start compiling rules")
 	for index, rr := range rawRules {
-		fields := strings.Fields(strings.ToLower(rr))
+		fields := strings.Fields(strings.ToUpper(rr))
+		if !strings.HasSuffix(fields[PatternOffset], ".") {
+			fields[PatternOffset] += "."
+		}
 		switch fields[RuleTypeOffset] {
-			case "rewrite", "rw":
+			case "REWRITE", "RW":
 				if err, rw := NewRewriteRule(fields); err != nil {
 					log.Fatalf("%d - Failed to parse rewrite rule: %s", index, err)
 				} else {
 					engine.rules[RewriteType] = append(engine.rules[RewriteType], rw)
 				}
 				break
-			case "pass", "p", "allow", "a", "deny", "d":
-				if err, r := NewMatchingRule(fields); err == nil {
+			case "PASS", "P", "ALLOW", "A", "DENY", "D":
+				if err, r := NewMatchingRule(fields); err != nil {
 					log.Fatalf("%d - Failed to parse rule: %s", index, err)
 				} else {
 					engine.rules[RuleTypeMap[fields[0]]] = append(engine.rules[RuleTypeMap[fields[0]]], r)
@@ -96,13 +100,15 @@ func NewEngine(rawRules []string) *RuleEngine {
 		}
 	}
 
+	log.Info("Compiling rules ended successfully")
 	return engine
 }
 
 func (re *RuleEngine) Apply(query string) (int8, string) {
+	var newQuery = strings.ToUpper(query)
 	// Apply Pass Rules
 	for _, mr := range re.rules[PassType] {
-		if pass, _ := mr.Apply(query); pass {
+		if pass, _ := mr.Apply(newQuery); pass {
 			return ALLOWED, query
 		}
 	}
@@ -110,7 +116,7 @@ func (re *RuleEngine) Apply(query string) (int8, string) {
 	// Apply Allow Rules
 	var res = BLOCKED
 	for _, ar := range re.rules[AllowType] {
-		if allowed, _ := ar.Apply(query); allowed {
+		if allowed, _ := ar.Apply(newQuery); allowed {
 			res = ALLOWED
 			break
 		}
@@ -122,15 +128,14 @@ func (re *RuleEngine) Apply(query string) (int8, string) {
 
 	// Apply Deny Rules
 	for _, dr := range re.rules[DenyType] {
-		if denied, _ := dr.Apply(query); denied {
+		if denied, _ := dr.Apply(newQuery); denied {
 			return BLOCKED, ""
 		}
 	}
 
 	// Apply rewrites Rules
-	var newQuery = query
 	for _, rw := range re.rules[RewriteType] {
-		rewrite, result := rw.Apply(query)
+		rewrite, result := rw.Apply(newQuery)
 		newQuery = result
 
 		// Exit rewrites if scanAll not sets and rewrite applied

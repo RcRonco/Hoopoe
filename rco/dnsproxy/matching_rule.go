@@ -25,7 +25,7 @@ func matchingFuncMap(action int8) (error, stringMatchingFunc) {
 		}
 	case REGEXP:
 		return nil, func(source string, pattern string) bool {
-			if matching, err := regexp.MatchString(pattern, source); err != nil {
+			if matching, err := regexp.MatchString(pattern, source); err == nil {
 				return matching
 			} else {
 				return false
@@ -61,7 +61,7 @@ func (r *MatchingRule) Parse(rawRule []string) error {
 	// TODO: Find a way to compile regexp before server starts
 	// Validate rules compiled before start running
 	if r.Action == REGEXP {
-		if _, err := regexp.Compile(r.Pattern); err == nil {
+		if _, err := regexp.Compile(r.Pattern); err != nil {
 			return fmt.Errorf("failed to parse Rewrite rule Regexp: %s", err)
 		}
 	}

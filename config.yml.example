@@ -11,6 +11,7 @@ ProxyRules:
   - Rewrite PREFIX ronco jack
   # Will allow only queries ends with .com
   - Allow SUFFIX .com
+  - Allow SUFFIX .co.il
   # Will deny every query end with malicious.com
   - Deny SUFFIX malicious.com
   # Will pass with out any processing every query contains MyOrg

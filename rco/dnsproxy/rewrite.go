@@ -51,6 +51,9 @@ func (r *RewriteRule) Parse(rawRule []string) error {
 
 	r.Pattern = rawRule[PatternOffset]
 	r.Replacement = rawRule[ReplacementOffset]
+	if !strings.HasSuffix(r.Replacement , ".") {
+		r.Replacement  += "."
+	}
 	if r.Action == REGEXP {
 		if pattern, err := regexp.Compile(r.Pattern); err != nil {
 			r.Regex = pattern

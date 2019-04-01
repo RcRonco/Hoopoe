@@ -1,0 +1,6 @@
+time="2019-04-02T01:24:33+03:00" level=info msg="127.0.0.1:59112 Access Record ;youtube.com.\tIN\t A"
+time="2019-04-02T01:20:38+03:00" level=info msg="BLOCKED - %!R(string=127.0.0.1:57690)ecord ;youtube.com.\tIN\t A"
+time="2019-04-02T01:20:41+03:00" level=info msg="127.0.0.1:57101 Access Record ;youtube.com.\tIN\t A"
+time="2019-04-02T01:20:41+03:00" level=info msg="BLOCKED - %!R(string=127.0.0.1:57101)ecord ;youtube.com.\tIN\t A"
+time="2019-04-02T01:20:42+03:00" level=info msg="127.0.0.1:54038 Access Record ;youtube.com.\tIN\t A"
+time="2019-04-02T01:20:42+03:00" level=info msg="BLOCKED - %!R(string=127.0.0.1:54038)ecord ;youtube.com.\tIN\t A"

@@ -24,6 +24,13 @@ type DNSProxy struct {
 	telemetry *TelemetryServer
 }
 
+func NewDNSProxy(configPath string) *DNSProxy {
+	proxy := new(DNSProxy)
+	proxy.Init(configPath)
+
+	return proxy
+}
+
 // Initialize the config of the DNSProxy from json file
 func (d *DNSProxy) Init(confPath string) {
 	// Load the config from json file
@@ -46,7 +53,7 @@ func (d *DNSProxy) Init(confPath string) {
 		if err == nil {
 			d.accessLog.Out = file
 		} else {
-			log.Errorf("Failed to log to file, %s", d.config.AccessLogPath)
+			log.Errorf("Failed to open log file: %s", d.config.AccessLogPath)
 		}
 	}
 }
@@ -125,8 +132,14 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 		// Check if the query has been blocked by white/black list rule
 		if res == BLOCKED {
 			d.returnBlocked(resp, req)
+			// Access Log
+			if d.config.AccessLog {
+				d.accessLog.Infof("BLOCKED - Record %s", resp.RemoteAddr().String(), req.Question[0].String())
+			}
 			return nil
 		}
+
+
 
 		// Append new Question the the message
 		rewrittenQuery := dns.Question{ Name: name, Qtype: query.Qtype, Qclass: query.Qclass}
@@ -138,14 +151,16 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 
 // Build response message for server message
 func (d *DNSProxy) buildResponseMsg(clientRequest *dns.Msg, upstreamReply *dns.Msg) *dns.Msg {
-	// Set the original name in the response
-	for index, q := range clientRequest.Question {
-		upstreamReply.Answer[index].Header().Name = q.Name
-	}
-
 	respMsg := new(dns.Msg)
 	respMsg.SetReply(clientRequest)
-	respMsg.Answer = upstreamReply.Answer
+
+	if upstreamReply != nil {
+		// Set the original name in the response
+		for index, q := range clientRequest.Question {
+			upstreamReply.Answer[index].Header().Name = q.Name
+		}
+		respMsg.Answer = upstreamReply.Answer
+	}
 
 	return respMsg
 }
