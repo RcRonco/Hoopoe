@@ -39,8 +39,10 @@ Configuration Options for the YAML configuration file.
 | RemoteAddresses | Remote DNS Servers | No | ```[127.0.0.1:8600, 1.1.1.1:53]``` | IP Address | 8.8.8.8:53 |
 | Telemetry.Enabled | Enable Performance stats, **can cause performance degradation** | No | ```false``` | ```true/false```| ``` true``` |
 | Telemetry.Address | Stats HTTP address, **can cause performance degradation** | No | ```127.0.0.1:8080``` | IP Address and Port | ``` 0.0.0.0:80``` |
+| EnableAccessLog | Access log enabled  | No | ```True/False``` | ```bool``` | ```True``` |
+| AccessLogPath | Access log file path **can cause performance degradation** | No | ```/var/log/hoopoe/access.log``` | POSIX file path | ```/tmp/access.log``` |
 | ScanAll | Enable ScallAll mode, which will apply all rewrite rules on query instead of the first one to match **can cause performance degration** | No | ```true``` | ```true/false```| ``` false``` | 
-| ProxyRules | Rules that will Rewrite/Deny/Allow/Pass the query  | Yes | - | ```[]{Type, Pattern, NewPattern}``` | Check the example below |
+| ProxyRules | Rules that will Rewrite/Deny/Allow/Pass the query  | Yes | - | ```[]string``` | Check the example below |
 
 #### Telemetry
 Hoopoe support exporting performance telemetry to prometheus with HTTP endpoint.    
@@ -68,34 +70,32 @@ Currently the are 4 types of rules supported.
     * NewPattern: ```Regexp```   
       
 ## Example
-Start DNS Proxy listen on ```127.0.0.1:53``` and send to upstream server in ```8.8.8.8:53```.
-
-###### Rules
-1. Rewrite every *.com into *.co.il
-2. Accepts every request for domain name that end with ```.com```
-3. Blocks every request for domain and subdomain of mywebsite.com
+Start DNS Proxy listen on ```127.0.0.1:8601``` and send to upstream server in ```8.8.8.8:53```.
 
 ```yaml
 ---
+---
 Address: "127.0.0.1:8601"
 RemoteAddresses:
-  - "127.0.0.1:8600"
   - "8.8.8.8:53"
 Telemetry:
   Enabled: true
   Address: "0.0.0.0:80"
+AccessLogPath: access.log
 ScanAll: true
 ProxyRules:
-  - Type: "Rewrite"
-    Pattern: ".ronco.$"
-    NewPattern: ".service.consul."
-  - Type: "Rewrite"
-    Pattern: ".meme.$"
-    NewPattern: ".query.consul."
-  - Type: "Allow"
-    Pattern: ".ronco.$"
-  - Type: "Deny"
-    Pattern: "mywebsite.com.$"
+  # Will Rewrite every query starting with mail to start with www
+  - Rewrite PREFIX mail www
+  # Will allow only queries ends with .com and .co.il
+  - Allow SUFFIX .com
+  - Allow SUFFIX .co.il
+  # Will deny every query end with youtube.com
+  - Deny SUFFIX youtube.com
+  # Will pass with out any processing every query equal to www.youtube.com
+  - Pass REGEXP www.youtube.com
+  # Will rewrite every query ends with .co.il to .com and myorg.com to service.consul
+  - Rewrite SUFFIX co.il com
+  - Rewrite SUFFIX myorg.com service.consul
 ```
 
 ## TODO:
@@ -103,4 +103,4 @@ ProxyRules:
 * [x] - Benchmark Latency
 * [x] - Adding Support for Allow and Deny (Black/White List) Rules.
 * [x] - Add Access log
-* [ ] - Rebrand the project :/
+* [x] - Rebrand the project :/
