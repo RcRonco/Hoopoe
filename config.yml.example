@@ -5,16 +5,18 @@ RemoteAddresses:
 Telemetry:
   Enabled: true
   Address: "0.0.0.0:80"
+AccessLogPath: access.log
 ScanAll: true
 ProxyRules:
-  # Will Rewrite every query starting with ronco to start with jack
-  - Rewrite PREFIX ronco jack
-  # Will allow only queries ends with .com
+  # Will Rewrite every query starting with mail to start with www
+  - Rewrite PREFIX mail www
+  # Will allow only queries ends with .com and .co.il
   - Allow SUFFIX .com
   - Allow SUFFIX .co.il
-  # Will deny every query end with malicious.com
-  - Deny SUFFIX malicious.com
-  # Will pass with out any processing every query contains MyOrg
-  - Pass REGEXP .*\.MyOrg\..*
-  # Will rewrite every query ends with myorg.com to service.consul
+  # Will deny every query end with youtube.com
+  - Deny SUFFIX youtube.com
+  # Will pass with out any processing every query equal to www.youtube.com
+  - Pass REGEXP www.youtube.com
+  # Will rewrite every query ends with .co.il to .com and myorg.com to service.consul
+  - Rewrite SUFFIX co.il com
   - Rewrite SUFFIX myorg.com service.consul
