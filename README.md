@@ -39,7 +39,7 @@ Configuration Options for the YAML configuration file.
 | RemoteAddresses | Remote DNS Servers | No | ```[127.0.0.1:8600, 1.1.1.1:53]``` | IP Address | 8.8.8.8:53 |
 | Telemetry.Enabled | Enable Performance stats, **can cause performance degradation** | No | ```false``` | ```true/false```| ``` true``` |
 | Telemetry.Address | Stats HTTP address, **can cause performance degradation** | No | ```127.0.0.1:8080``` | IP Address and Port | ``` 0.0.0.0:80``` |
-| EnableAccessLog | Access log enabled  | No | ```True/False``` | ```bool``` | ```True``` |
+| EnableAccessLog | Access log enabled  | No | ```True``` | ```bool``` | ```True``` |
 | AccessLogPath | Access log file path **can cause performance degradation** | No | ```/var/log/hoopoe/access.log``` | POSIX file path | ```/tmp/access.log``` |
 | ScanAll | Enable ScallAll mode, which will apply all rewrite rules on query instead of the first one to match **can cause performance degration** | No | ```true``` | ```true/false```| ``` false``` | 
 | ProxyRules | Rules that will Rewrite/Deny/Allow/Pass the query  | Yes | - | ```[]string``` | Check the example below |
