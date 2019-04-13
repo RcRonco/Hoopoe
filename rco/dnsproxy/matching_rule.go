@@ -7,32 +7,28 @@ import (
 	"strings"
 )
 
-type stringMatchingFunc func(string, string) bool
+type stringMatchingFunc func(rule *MatchingRule, string) bool
 
 func matchingFuncMap(action int8) (error, stringMatchingFunc) {
 	switch action {
 	case PREFIX:
-		return nil, func(source string, pattern string) bool {
-			return strings.HasPrefix(source, pattern)
+		return nil, func(rule *MatchingRule, source string) bool {
+			return strings.HasPrefix(source, rule.Pattern)
 		}
 	case SUFFIX:
-		return nil, func(source string, pattern string) bool {
-			return strings.HasSuffix(source, pattern)
+		return nil, func(rule *MatchingRule, source string) bool {
+			return strings.HasSuffix(source, rule.Pattern)
 		}
 	case SUBSTRING:
-		return nil, func(source string, pattern string) bool {
-			return strings.Contains(source, pattern)
+		return nil, func(rule *MatchingRule, source string) bool {
+			return strings.Contains(source, rule.Pattern)
 		}
 	case REGEXP:
-		return nil, func(source string, pattern string) bool {
-			if matching, err := regexp.MatchString(pattern, source); err == nil {
-				return matching
-			} else {
-				return false
-			}
+		return nil, func(rule *MatchingRule, source string) bool {
+			return rule.Regex.MatchString(source)
 		}
 	default:
-		return errors.New("unknown rewrite action"), nil
+		return errors.New("unknown matching action"), nil
 	}
 }
 
@@ -43,6 +39,7 @@ type MatchingRule struct {
 
 	Action  int8
 	Pattern string
+	Regex *regexp.Regexp
 }
 
 func (r *MatchingRule) Parse(rawRule []string) error {
@@ -58,11 +55,12 @@ func (r *MatchingRule) Parse(rawRule []string) error {
 
 	r.Pattern = rawRule[PatternOffset]
 
-	// TODO: Find a way to compile regexp before server starts
 	// Validate rules compiled before start running
 	if r.Action == REGEXP {
-		if _, err := regexp.Compile(r.Pattern); err != nil {
+		if regex, err := regexp.Compile(r.Pattern); err != nil {
 			return fmt.Errorf("failed to parse Rewrite rule Regexp: %s", err)
+		} else {
+			r.Regex = regex
 		}
 	}
 
@@ -77,7 +75,7 @@ func (r *MatchingRule) Parse(rawRule []string) error {
 }
 
 func (r *MatchingRule) Apply(name string) (bool, string) {
-	return r.matchingRule(name, r.Pattern), name
+	return r.matchingRule(r, name), name
 }
 
 func NewMatchingRule(rawRule []string) (error, *MatchingRule) {

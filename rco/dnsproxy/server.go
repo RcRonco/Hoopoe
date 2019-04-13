@@ -139,8 +139,6 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 			return nil
 		}
 
-
-
 		// Append new Question the the message
 		rewrittenQuery := dns.Question{ Name: name, Qtype: query.Qtype, Qclass: query.Qclass}
 		upstreamMsg.Question = append(upstreamMsg.Question, rewrittenQuery)

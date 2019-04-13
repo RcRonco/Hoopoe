@@ -16,7 +16,7 @@ type rewriteOptions struct {
 	SubstringReplacements	int
 }
 
-type rewriteFunc func(string, *RewriteRule) (bool, string)
+type rewriteFunc func(*RewriteRule, string) (bool, string)
 
 // RULE-TYPE ACTION PATTERN REPLACEMENT OPTIONS
 type RewriteRule struct {
@@ -73,13 +73,13 @@ func (r *RewriteRule) Parse(rawRule []string) error {
 }
 
 func (r *RewriteRule) Apply(name string) (bool, string) {
-	return r.rwRule(name, r)
+	return r.rwRule(r, name)
 }
 
 func rewriteFuncMap(action int8) (error, rewriteFunc) {
 	switch action {
 	case PREFIX:
-		return nil, func(req string, rule *RewriteRule) (bool, string) {
+		return nil, func(rule *RewriteRule, req string) (bool, string) {
 			if strings.HasPrefix(req, rule.Pattern) {
 				resp := rule.Replacement + strings.TrimPrefix(req, rule.Pattern)
 				return true, resp
@@ -87,7 +87,7 @@ func rewriteFuncMap(action int8) (error, rewriteFunc) {
 			return false, req
 		}
 	case SUFFIX:
-		return nil, func(req string, rule *RewriteRule) (bool, string) {
+		return nil, func(rule *RewriteRule, req string) (bool, string) {
 			if strings.HasSuffix(req, rule.Pattern) {
 				resp := strings.TrimSuffix(req, rule.Pattern) + rule.Replacement
 				return true, resp
@@ -95,7 +95,7 @@ func rewriteFuncMap(action int8) (error, rewriteFunc) {
 			return false, req
 		}
 	case SUBSTRING:
-		return nil, func(req string, rule *RewriteRule) (bool, string) {
+		return nil, func(rule *RewriteRule, req string) (bool, string) {
 			if strings.Contains(req, rule.Pattern) {
 				resp := strings.Replace(req, rule.Pattern, rule.Replacement, rule.options.SubstringReplacements)
 				return true, resp
@@ -103,7 +103,7 @@ func rewriteFuncMap(action int8) (error, rewriteFunc) {
 			return false, req
 		}
 	case REGEXP:
-		return nil, func(req string, rule *RewriteRule) (bool, string) {
+		return nil, func(rule *RewriteRule, req string) (bool, string) {
 			if rule.Regex != nil {
 				resp := rule.Regex.ReplaceAllString(req, rule.Replacement)
 				return true, resp
