@@ -15,8 +15,7 @@ func main() {
 		ForceColors: true,
 	})
 
-	proxy := dnsproxy.DNSProxy{}
-	proxy.Init(*configPath)
+	proxy := dnsproxy.NewDNSProxy(*configPath)
 	log.Info("Configuration loaded successfully")
 
 	if err := proxy.ListenAndServe(); err != nil {

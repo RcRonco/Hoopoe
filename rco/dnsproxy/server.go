@@ -19,9 +19,16 @@ func handleError(e error, ln int) {
 type DNSProxy struct {
 	config    Config
 	server    *dns.Server
-	rules     RuleEngine
+	rules     *RuleEngine
 	accessLog *log.Logger
 	telemetry *TelemetryServer
+}
+
+func NewDNSProxy(configPath string) *DNSProxy {
+	proxy := new(DNSProxy)
+	proxy.Init(configPath)
+
+	return proxy
 }
 
 // Initialize the config of the DNSProxy from json file
@@ -30,9 +37,8 @@ func (d *DNSProxy) Init(confPath string) {
 	d.config = BuildConfig(confPath)
 
 	// Compile all the rules from the config
-	err := d.rules.CompileRules(d.config.Rules)
+	d.rules = NewEngine(d.config.Rules)
 	d.rules.SetScanAll(d.config.ScanAll)
-	handleError(err, 52)
 
 	// Enable Telemetry
 	if d.config.Telemetry.Enabled {
@@ -47,7 +53,7 @@ func (d *DNSProxy) Init(confPath string) {
 		if err == nil {
 			d.accessLog.Out = file
 		} else {
-			log.Errorf("Failed to log to file, %s", d.config.AccessLogPath)
+			log.Errorf("Failed to open log file: %s", d.config.AccessLogPath)
 		}
 	}
 }
@@ -124,8 +130,12 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 		res, name := d.rules.Apply(query.Name)
 
 		// Check if the query has been blocked by white/black list rule
-		if res.Code == BLOCKED {
+		if res == BLOCKED {
 			d.returnBlocked(resp, req)
+			// Access Log
+			if d.config.AccessLog {
+				d.accessLog.Infof("BLOCKED - Record %s", resp.RemoteAddr().String(), req.Question[0].String())
+			}
 			return nil
 		}
 
@@ -139,14 +149,16 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 
 // Build response message for server message
 func (d *DNSProxy) buildResponseMsg(clientRequest *dns.Msg, upstreamReply *dns.Msg) *dns.Msg {
-	// Set the original name in the response
-	for index, q := range clientRequest.Question {
-		upstreamReply.Answer[index].Header().Name = q.Name
-	}
-
 	respMsg := new(dns.Msg)
 	respMsg.SetReply(clientRequest)
-	respMsg.Answer = upstreamReply.Answer
+
+	if upstreamReply != nil {
+		// Set the original name in the response
+		for index, q := range clientRequest.Question {
+			upstreamReply.Answer[index].Header().Name = q.Name
+		}
+		respMsg.Answer = upstreamReply.Answer
+	}
 
 	return respMsg
 }
