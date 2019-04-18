@@ -10,6 +10,11 @@ import (
 	"net/http"
 )
 
+type TelemetryConfig struct {
+	Enabled bool   `mapstructure:"Enabled"`
+	Address string `mapstructure:"Address"`
+}
+
 type TelemetryServer struct {
 	config *TelemetryConfig
 }

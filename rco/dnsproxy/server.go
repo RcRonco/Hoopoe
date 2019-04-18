@@ -22,6 +22,7 @@ type DNSProxy struct {
 	rules     *RuleEngine
 	accessLog *log.Logger
 	telemetry *TelemetryServer
+	usManager *UpstreamsManager
 }
 
 func NewDNSProxy(configPath string) *DNSProxy {
@@ -39,6 +40,9 @@ func (d *DNSProxy) Init(confPath string) {
 	// Compile all the rules from the config
 	d.rules = NewEngine(d.config.Rules)
 	d.rules.SetScanAll(d.config.ScanAll)
+
+	// Init upstream manager
+	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, d.config.ClientMapFile)
 
 	// Enable Telemetry
 	if d.config.Telemetry.Enabled {
@@ -84,20 +88,7 @@ func (d *DNSProxy) forwardRequest(req *dns.Msg) *dns.Msg {
 		defer metrics.MeasureSince([]string{"UpstreamServer", "Latency"}, time.Now())
 	}
 
-	// Create a DNS client
-	client := new(dns.Client)
-
-	// Make a request to the upstream server
-	for _, remoteHost := range d.config.RemoteHosts {
-		resp, _, err := client.Exchange(req, remoteHost)
-		if err != nil {
-			metrics.SetGauge([]string{remoteHost, "DROPS"}, 1)
-		} else if len(resp.Answer) > 0 {
-			return resp
-		}
-	}
-
-	return nil
+	return d.usManager.forwardRequest(req)
 }
 
 // handle PTR records

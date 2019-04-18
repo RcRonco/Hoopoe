@@ -9,20 +9,17 @@ import (
 	"strings"
 )
 
-type TelemetryConfig struct {
-	Enabled bool   `mapstructure:"Enabled"`
-	Address string `mapstructure:"Address"`
-}
-
 type Config struct {
 	// Server Net Config
-	RemoteHosts  []string `mapstructure:"RemoteAddresses"`
-	LocalAddress string   `mapstructure:"Address"`
+	LBType       string           `mapstructure:"LBType"`
+	RemoteHosts  []UpstreamServer `mapstructure:"UpstreamServers"`
+	LocalAddress string           `mapstructure:"Address"`
 
 	// General
 	Telemetry     TelemetryConfig `mapstructure:"Telemetry"`
 	AccessLog     bool            `mapstructure:"EnableAccessLog"`
 	AccessLogPath string          `mapstructure:"AccessLogPath"`
+	ClientMapFile string          `mapstructure:"ClientMapFile"`
 
 	// Rule Config
 	ScanAll bool     `mapstructure:"ScanAll"`
@@ -54,11 +51,13 @@ func BuildConfig(filePath string) Config {
 	}
 
 	viper.AddConfigPath(filepath.Dir(filePath))
+	viper.SetDefault("LBType", "ByOrder")
 	viper.SetDefault("Address", "127.0.0.1:53")
 	viper.SetDefault("Telemetry.Enabled", false)
 	viper.SetDefault("Telemetry.Address", "127.0.0.1:8080")
 	viper.SetDefault("EnableAccessLog", true)
-	viper.SetDefault("AccessLogPath", "/var/log/hopoe/access.log")
+	viper.SetDefault("AccessLogPath", "/var/log/hoopoe/access.log")
+	viper.SetDefault("ClientMapFile", "/etc/hoopoe/client_map.yml")
 	viper.SetDefault("ScanAll", true)
 
 	err = viper.ReadInConfig()

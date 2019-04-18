@@ -1,7 +1,15 @@
 ---
 Address: "127.0.0.1:8601"
-RemoteAddresses:
-  - "8.8.8.8:53"
+LBType: RoundRobin
+UpstreamServers:
+  - Address: "8.8.8.8:53"
+    Annotations:
+      region: "il"
+      domain: "co.il"
+  - Address: "8.8.4.4:53"
+      Annotations:
+        region: "us"
+        domain: "com"
 Telemetry:
   Enabled: true
   Address: "0.0.0.0:80"
