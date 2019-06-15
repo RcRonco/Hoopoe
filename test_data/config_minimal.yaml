@@ -1,0 +1,7 @@
+---
+UpstreamServers:
+  - Address: "8.8.8.8:53"
+    Annotations:
+      mocking: true
+ProxyRules:
+  - Rewrite PREFIX mail www

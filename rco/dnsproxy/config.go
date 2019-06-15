@@ -9,6 +9,17 @@ import (
 	"strings"
 )
 
+const (
+	LBTypeDefaultConfig = "ByOrder"
+	AddressDefaultConfig = "127.0.0.1:53"
+	TelemetryEnabledDefaultConfig = false
+	TelemetryAddressDefaultConfig = "127.0.0.1:8080"
+	EnableAccessLogDefaultConfig = true
+	AccessLogPathDefaultConfig = "/var/log/hoopoe/access.log"
+	ClientMapPathDefaultConfig = ""
+	ScanAllDefaultConfig = true
+)
+
 type Config struct {
 	// Server Net Config
 	LBType       string           `mapstructure:"LBType"`
@@ -26,7 +37,7 @@ type Config struct {
 	Rules   []string `mapstructure:"ProxyRules"`
 }
 
-func DecodeConfig() Config {
+func decodeConfig() Config {
 	var conf Config
 	if err := viper.Unmarshal(&conf); err != nil {
 		log.Fatalf("failed to parse config file, %s", err)
@@ -39,7 +50,7 @@ func BuildConfig(filePath string) Config {
 	fstat, err := os.Stat(filePath)
 	if err != nil {
 		fmt.Println(err)
-		log.Fatal("Failed to access the given config path.")
+		log.Fatal("Failed to access config path.")
 	}
 	if fstat.IsDir() {
 		viper.SetConfigName("config")
@@ -51,18 +62,18 @@ func BuildConfig(filePath string) Config {
 	}
 
 	viper.AddConfigPath(filepath.Dir(filePath))
-	viper.SetDefault("LBType", "ByOrder")
-	viper.SetDefault("Address", "127.0.0.1:53")
-	viper.SetDefault("Telemetry.Enabled", false)
-	viper.SetDefault("Telemetry.Address", "127.0.0.1:8080")
-	viper.SetDefault("EnableAccessLog", true)
-	viper.SetDefault("AccessLogPath", "/var/log/hoopoe/access.log")
-	viper.SetDefault("ClientMapFile", "/etc/hoopoe/client_map.yml")
-	viper.SetDefault("ScanAll", true)
+	viper.SetDefault("LBType", LBTypeDefaultConfig)
+	viper.SetDefault("Address", AddressDefaultConfig)
+	viper.SetDefault("Telemetry.Enabled", TelemetryEnabledDefaultConfig)
+	viper.SetDefault("Telemetry.Address", TelemetryAddressDefaultConfig)
+	viper.SetDefault("EnableAccessLog", EnableAccessLogDefaultConfig)
+	viper.SetDefault("AccessLogPath", AccessLogPathDefaultConfig)
+	viper.SetDefault("ClientMapFile", ClientMapPathDefaultConfig)
+	viper.SetDefault("ScanAll", ScanAllDefaultConfig)
 
 	err = viper.ReadInConfig()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return DecodeConfig()
+	return decodeConfig()
 }

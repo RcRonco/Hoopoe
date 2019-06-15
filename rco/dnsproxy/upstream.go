@@ -76,6 +76,10 @@ func NewUpstreamsManager(servers []UpstreamServer, lbType string, clientMappingF
 func (usm *UpstreamsManager) loadSubnetMap(path string) error {
 	var err error
 	data := make([]byte, 4)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil
+	}
+
 	// Read the client map file
 	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
 

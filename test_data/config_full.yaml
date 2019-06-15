@@ -1,0 +1,15 @@
+---
+Address: "127.0.0.1:8601"
+LBType: RoundRobin
+UpstreamServers:
+  - Address: "8.8.8.8:53"
+    Annotations:
+      mocking: true
+ProxyRules:
+  - Rewrite PREFIX mail www
+ClientMapFile: "/etc/hoopoe/clientmap.yaml"
+Telemetry:
+  Enabled: true
+  Address: "0.0.0.0:80"
+AccessLogPath: access.log
+ScanAll: true
