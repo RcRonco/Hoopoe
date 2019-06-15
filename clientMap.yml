@@ -1,7 +1,10 @@
 ---
 - region: siteA
-  network: "192.168.1.0/24"
+  networks:
+  - "192.168.1.0/24"
 - region: siteB
-  network: "192.168.2.0/24"
+  networks:
+  - "192.168.2.0/24"
 - region: siteC
-  network: "192.168.3.0/24"
+  networks:
+  - "192.168.3.0/24"

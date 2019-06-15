@@ -24,6 +24,8 @@ const (
 	DenyType
 )
 
+
+
 const (
 	PREFIX int8 = iota
 	SUFFIX
@@ -75,11 +77,15 @@ func NewEngine(rawRules []string) *RuleEngine {
 	engine.rules = make(map[int8][]Rule)
 
 	log.Info("Start compiling rules")
+
+	// Compile every rule definition
 	for index, rr := range rawRules {
+		// Split all rules into fields and convert to UPPER case
 		fields := strings.Fields(strings.ToUpper(rr))
 		if !strings.HasSuffix(fields[PatternOffset], ".") {
 			fields[PatternOffset] += "."
 		}
+		// Parse rules by type and add to the rule map
 		switch fields[RuleTypeOffset] {
 			case "REWRITE", "RW":
 				if err, rw := NewRewriteRule(fields); err != nil {
@@ -105,6 +111,7 @@ func NewEngine(rawRules []string) *RuleEngine {
 }
 
 func (re *RuleEngine) Apply(query string) (int8, string) {
+	// Convert query into UPPER case to match all UPPER case rules
 	var newQuery = strings.ToUpper(query)
 	// Apply Pass Rules
 	for _, mr := range re.rules[PassType] {

@@ -82,13 +82,32 @@ func (d *DNSProxy) ListenAndServe() error {
 }
 
 // Internal function of passing requests to the upstream DNS server
+func (d *DNSProxy) forwardRequestImpl(req *dns.Msg) *dns.Msg {
+	// Create a DNS client
+	client := new(dns.Client)
+
+	// Make a request to the upstream server
+	for _, remoteHost := range d.config.RemoteHosts {
+		resp, _, err := client.Exchange(req, remoteHost.Address)
+		if err != nil {
+			metrics.SetGauge([]string{remoteHost.Address, "DROPS"}, 1)
+		} else if len(resp.Answer) > 0 {
+			return resp
+		}
+	}
+
+	return nil
+}
+
+
+// Internal function of passing requests to the upstream DNS server
 func (d *DNSProxy) forwardRequest(req *dns.Msg) *dns.Msg {
 	// Profiling the latency of the upstream servers
 	if d.config.Telemetry.Enabled {
 		defer metrics.MeasureSince([]string{"UpstreamServer", "Latency"}, time.Now())
 	}
 
-	return d.usManager.forwardRequest(req)
+	return d.forwardRequestImpl(req)
 }
 
 // handle PTR records

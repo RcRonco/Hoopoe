@@ -6,9 +6,7 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/miekg/dns"
 	"github.com/prometheus/common/log"
-	"gopkg.in/yaml.v2"
 	"net"
-	"os"
 	"sync"
 )
 
@@ -33,11 +31,6 @@ type UpstreamsManager struct {
 	regionMap map[string]ServersView
 
 	clientMap []ClientsSubnet
-}
-
-type ClientsSubnet struct {
-	Network net.IPNet `yaml:"network"`
-	Region  string `yaml:"region"`
 }
 
 func NewUpstreamsManager(servers []UpstreamServer, lbType string, clientMappingFile string) *UpstreamsManager {
@@ -70,34 +63,6 @@ func NewUpstreamsManager(servers []UpstreamServer, lbType string, clientMappingF
 	}
 
 	return usm
-}
-
-// Get client map file and parse it
-func (usm *UpstreamsManager) loadSubnetMap(path string) error {
-	var err error
-	data := make([]byte, 4)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil
-	}
-
-	// Read the client map file
-	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
-
-	if err != nil {
-		goto loadSubnetError
-	}
-	if _, err = file.Read(data); err != nil {
-		goto loadSubnetError
-	}
-
-	// Parse the YAML file
-	if err = yaml.Unmarshal(data, usm.clientMap); err != nil {
-		goto loadSubnetError
-	}
-	return nil
-
-loadSubnetError:
-	return fmt.Errorf("failed to create client map: %s", err)
 }
 
 func (usm *UpstreamsManager) GetRegion(ip string) (error, string) {
