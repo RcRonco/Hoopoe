@@ -18,6 +18,7 @@ const (
 	AccessLogPathDefaultConfig = "/var/log/hoopoe/access.log"
 	ClientMapPathDefaultConfig = ""
 	ScanAllDefaultConfig = true
+	UpstreamDefaultTimeout = "5s"
 )
 
 type Config struct {
@@ -27,10 +28,11 @@ type Config struct {
 	LocalAddress string           `mapstructure:"Address"`
 
 	// General
-	Telemetry     TelemetryConfig `mapstructure:"Telemetry"`
-	AccessLog     bool            `mapstructure:"EnableAccessLog"`
-	AccessLogPath string          `mapstructure:"AccessLogPath"`
-	ClientMapFile string          `mapstructure:"ClientMapFile"`
+	Telemetry       TelemetryConfig `mapstructure:"Telemetry"`
+	AccessLog       bool            `mapstructure:"EnableAccessLog"`
+	AccessLogPath   string          `mapstructure:"AccessLogPath"`
+	ClientMapFile   string          `mapstructure:"ClientMapFile"`
+	UpstreamTimeout string          `mapstructure:"UpstreamTimeout"`
 
 	// Rule Config
 	ScanAll bool     `mapstructure:"ScanAll"`
@@ -70,6 +72,7 @@ func BuildConfig(filePath string) Config {
 	viper.SetDefault("AccessLogPath", AccessLogPathDefaultConfig)
 	viper.SetDefault("ClientMapFile", ClientMapPathDefaultConfig)
 	viper.SetDefault("ScanAll", ScanAllDefaultConfig)
+	viper.SetDefault("UpstreamTimeout", UpstreamDefaultTimeout)
 
 	err = viper.ReadInConfig()
 	if err != nil {

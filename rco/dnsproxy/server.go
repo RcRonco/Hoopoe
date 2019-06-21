@@ -1,7 +1,6 @@
 package dnsproxy
 
 import (
-	"context"
 	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-metrics"
 	"github.com/miekg/dns"
@@ -52,7 +51,7 @@ func (d *DNSProxy) Init(confPath string) {
 	// Load all engines and managers
 	d.rulesEngine = NewRuleEngine(d.config.Rules)
 	d.rulesEngine.SetScanAll(d.config.ScanAll)
-	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, d.regionMap)
+	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, d.regionMap, d.config.UpstreamTimeout)
 	d.templateEngine = NewTemplateEngine(d.regionMap)
 
 	// Enable Telemetry
