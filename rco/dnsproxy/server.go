@@ -1,6 +1,7 @@
 package dnsproxy
 
 import (
+	"context"
 	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-metrics"
 	"github.com/miekg/dns"
@@ -18,11 +19,15 @@ func handleError(e error, ln int) {
 // Proxy server implementation
 type DNSProxy struct {
 	config    Config
-	server    *dns.Server
-	rules     *RuleEngine
+
 	accessLog *log.Logger
 	telemetry *TelemetryServer
-	usManager *UpstreamsManager
+	server    *dns.Server
+
+	rulesEngine    *RuleEngine
+	templateEngine *TemplateEngine
+	usManager      *UpstreamsManager
+	regionMap      *RegionMap
 }
 
 func NewDNSProxy(configPath string) *DNSProxy {
@@ -34,15 +39,21 @@ func NewDNSProxy(configPath string) *DNSProxy {
 
 // Initialize the config of the DNSProxy from json file
 func (d *DNSProxy) Init(confPath string) {
+	var err error
 	// Load the config from json file
 	d.config = BuildConfig(confPath)
 
-	// Compile all the rules from the config
-	d.rules = NewEngine(d.config.Rules)
-	d.rules.SetScanAll(d.config.ScanAll)
+	// Load Region Map
+	if err, d.regionMap = NewRegionMap(d.config.ClientMapFile); err != nil {
+		log.Errorf("Failed to open client map file: %s", d.config.AccessLogPath)
+		log.Warning("Skipping Client map configuration")
+	}
 
-	// Init upstream manager
-	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, d.config.ClientMapFile)
+	// Load all engines and managers
+	d.rulesEngine = NewRuleEngine(d.config.Rules)
+	d.rulesEngine.SetScanAll(d.config.ScanAll)
+	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, d.regionMap)
+	d.templateEngine = NewTemplateEngine(d.regionMap)
 
 	// Enable Telemetry
 	if d.config.Telemetry.Enabled {
@@ -101,24 +112,24 @@ func (d *DNSProxy) forwardRequestImpl(req *dns.Msg) *dns.Msg {
 
 
 // Internal function of passing requests to the upstream DNS server
-func (d *DNSProxy) forwardRequest(req *dns.Msg) *dns.Msg {
+func (d *DNSProxy) forwardRequest(req *dns.Msg, sourceIP string) *dns.Msg {
 	// Profiling the latency of the upstream servers
 	if d.config.Telemetry.Enabled {
 		defer metrics.MeasureSince([]string{"UpstreamServer", "Latency"}, time.Now())
 	}
 
-	return d.forwardRequestImpl(req)
+	return d.usManager.forwardRequest(req, sourceIP)
 }
 
 // handle PTR records
-// Currently PTR records rules are not supported
+// Currently PTR records rulesEngine are not supported
 func (d *DNSProxy) handlePtr(resp dns.ResponseWriter, req *dns.Msg) {
 	// Build new DNS message
 	upstreamMsg := new(dns.Msg)
 	req.CopyTo(upstreamMsg)
 
 	// Send it to the upstream server
-	reply := d.forwardRequest(upstreamMsg)
+	reply := d.forwardRequest(upstreamMsg, resp.RemoteAddr().String())
 
 	// Build response and send it
 	respMsg := new(dns.Msg)
@@ -128,16 +139,16 @@ func (d *DNSProxy) handlePtr(resp dns.ResponseWriter, req *dns.Msg) {
 	handleError(err, 111)
 }
 
-// build upstream message by applying Proxy rules
+// build upstream message by applying Proxy rulesEngine
 func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.Msg {
-	// Copy the message for applying rules on it
+	// Copy the message for applying rulesEngine on it
 	upstreamMsg := new(dns.Msg)
 	req.CopyTo(upstreamMsg)
 	upstreamMsg.Question = []dns.Question{}
 
 	// Run on every query entry in the request
 	for _, query := range req.Question {
-		res, name := d.rules.Apply(query.Name)
+		res, name := d.rulesEngine.Apply(query.Name)
 
 		// Check if the query has been blocked by white/black list rule
 		if res == BLOCKED {
@@ -145,6 +156,22 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 			// Access Log
 			if d.config.AccessLog {
 				d.accessLog.Infof("BLOCKED - Record %s", resp.RemoteAddr().String(), req.Question[0].String())
+			}
+			return nil
+		}
+		// Check region map is initialized
+		if d.regionMap != nil {
+			res, name  = d.templateEngine.Replace(name, resp.RemoteAddr(), req)
+		}
+
+		// Check response for template engine is valid
+		if res == BLOCKED {
+			// Block
+			d.returnBlocked(resp, req)
+			// Log failed template
+			if d.config.AccessLog {
+				d.accessLog.Infof("Template failed - Record %s -> %s",
+								  resp.RemoteAddr().String(), req.Question[0].String(), name)
 			}
 			return nil
 		}
@@ -175,7 +202,7 @@ func (d *DNSProxy) buildResponseMsg(clientRequest *dns.Msg, upstreamReply *dns.M
 
 // handle Query requests that are not PTR
 func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
-	// Profiling the latency of the upstream servers
+	// Log the latency of the upstream servers
 	if d.config.Telemetry.Enabled {
 		defer metrics.MeasureSince([]string{"Request", "Latency"}, time.Now())
 	}
@@ -185,14 +212,14 @@ func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
 		d.accessLog.Infof("%s Access Record %s", resp.RemoteAddr().String(), req.Question[0].String())
 	}
 
-	// Copy the message for applying rules on it
+	// Copy the message for applying rulesEngine on it
 	upstreamMsg := d.buildUpstreamMsg(resp, req)
 	if upstreamMsg == nil {
 		return
 	}
 
 	// Make a request to the upstream server
-	reply := d.forwardRequest(upstreamMsg)
+	reply := d.forwardRequest(req, resp.RemoteAddr().String())
 
 	respMsg := d.buildResponseMsg(req, reply)
 	err := resp.WriteMsg(respMsg)

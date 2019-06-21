@@ -1,8 +1,6 @@
 package dnsproxy
 
 import (
-  "errors"
-  "fmt"
 	"github.com/miekg/dns"
 	"net"
 	"regexp"
@@ -10,7 +8,7 @@ import (
 )
 
 const (
-	EXPR_LEFOVER = `(^\.|^-|\.-|-\.|\.\.|--|-$)`
+	ExprLeftover = `(^\.|^-|\.-|-\.|\.\.|--|-$)`
 )
 
 type TemplateEngine struct {
@@ -18,15 +16,16 @@ type TemplateEngine struct {
 	templateLeftoverRegex *regexp.Regexp
 }
 
-func NewTemplateRule() (error, *TemplateEngine) {
+func NewTemplateEngine(regionMap *RegionMap) *TemplateEngine {
 	tr := new(TemplateEngine)
-	tr.templateLeftoverRegex = regexp.MustCompile(EXPR_LEFOVER)
-	return nil, tr
+	tr.regionMap = regionMap
+	tr.templateLeftoverRegex = regexp.MustCompile(ExprLeftover)
+	return tr
 }
 
-func (tr *TemplateEngine) Replace(name string, reqIP net.Addr, req *dns.Msg) (bool, string) {
-	if !strings.Contains(name, "{") {
-		return false, name
+func (tr *TemplateEngine) Replace(name string, reqIP net.Addr, req *dns.Msg) (int8, string) {
+	if !strings.Contains(name, "{:") {
+		return BLOCKED, name
 	}
 
 	region := tr.regionMap.GetRegion(strings.Split(reqIP.String(), ":")[0])
@@ -37,6 +36,6 @@ func (tr *TemplateEngine) Replace(name string, reqIP net.Addr, req *dns.Msg) (bo
 		name = strings.Replace(name, "{REGION}", region, 0)
 	}
 
-	return true, name
+	return ALLOWED, name
 }
 

@@ -14,7 +14,7 @@ type Region struct {
 
 type RegionMap map[string]Region
 
-func LoadRegionMap(path string) (error, *RegionMap) {
+func NewRegionMap(path string) (error, *RegionMap) {
 	regionMap := make(RegionMap)
 	var err error
 	data := make([]byte, 4)

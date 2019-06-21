@@ -72,20 +72,20 @@ func (re *RuleEngine) SetScanAll(scanAll bool) {
 	Rule definition format:
 	RULETYPE ACTION FROM TO OPTIONS
  */
-func NewEngine(rawRules []string) *RuleEngine {
+func NewRuleEngine(rawRules []string) *RuleEngine {
 	engine := new(RuleEngine)
 	engine.rules = make(map[int8][]Rule)
 
-	log.Info("Start compiling rules")
+	log.Info("Start compiling rulesEngine")
 
 	// Compile every rule definition
 	for index, rr := range rawRules {
-		// Split all rules into fields and convert to UPPER case
+		// Split all rulesEngine into fields and convert to UPPER case
 		fields := strings.Fields(strings.ToUpper(rr))
 		if !strings.HasSuffix(fields[PatternOffset], ".") {
 			fields[PatternOffset] += "."
 		}
-		// Parse rules by type and add to the rule map
+		// Parse rulesEngine by type and add to the rule map
 		switch fields[RuleTypeOffset] {
 			case "REWRITE", "RW":
 				if err, rw := NewRewriteRule(fields); err != nil {
@@ -106,12 +106,12 @@ func NewEngine(rawRules []string) *RuleEngine {
 		}
 	}
 
-	log.Info("Compiling rules ended successfully")
+	log.Info("Compiling rulesEngine ended successfully")
 	return engine
 }
 
 func (re *RuleEngine) Apply(query string) (int8, string) {
-	// Convert query into UPPER case to match all UPPER case rules
+	// Convert query into UPPER case to match all UPPER case rulesEngine
 	var newQuery = strings.ToUpper(query)
 	// Apply Pass Rules
 	for _, mr := range re.rules[PassType] {
@@ -151,6 +151,6 @@ func (re *RuleEngine) Apply(query string) (int8, string) {
 		}
 	}
 
-	// If passed allow rules and not blocked by deny or change return ALLOWED with original string
+	// If passed allow rulesEngine and not blocked by deny or change return ALLOWED with original string
 	return ALLOWED, newQuery
 }

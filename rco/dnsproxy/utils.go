@@ -1,8 +1,18 @@
 package dnsproxy
 
+import "regexp"
+
 const (
-	DNS_REGEXPR = `^(([\{\}a-zA-Z0-9]|[\{\}a-zA-Z0-9][\{\}a-zA-Z0-9\-]*[\{\}a-zA-Z0-9])\.)*([\{\}A-Za-z0-9]|[\{\}A-Za-z0-9][\{\}A-Za-z0-9\-]*[\{\}A-Za-z0-9])$`
+	DnsQueryExpr = `^(([a-zA-Z0-9]|[a-zA-Z0-9\-\{\}]*[a-zA-Z0-9\{\}])\.)*([A-Za-z0-9\{\}]|[A-Za-z0-9\-\{\}]*[A-Za-z0-9\{\}])$`
 )
+
+var (
+	DnsValidator = regexp.MustCompile(DnsQueryExpr)
+)
+
+func ValidateDNSFormat(dnsName string) bool {
+	return DnsValidator.MatchString(dnsName)
+}
 
 func ValidateTemplateBrackets(pattern string) bool {
 	openBr := false

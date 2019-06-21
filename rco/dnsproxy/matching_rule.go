@@ -57,7 +57,7 @@ func (r *MatchingRule) Parse(rawRule []string) error {
 	}
 
 	// Validate the rule patterns match DNS standard + templating
-	if matched, _ := regexp.MatchString(DNS_REGEXPR, rawRule[PatternOffset]); !matched {
+	if ValidateDNSFormat(rawRule[PatternOffset]) {
 		return fmt.Errorf("pattern must be valid dns string: %s", rawRule[PatternOffset])
 	}
 
@@ -68,7 +68,7 @@ func (r *MatchingRule) Parse(rawRule []string) error {
 
 	r.Pattern = rawRule[PatternOffset]
 
-	// Validate rules compiled before start running
+	// Validate rulesEngine compiled before start running
 	if r.Action == REGEXP {
 		if regex, err := regexp.Compile(r.Pattern); err != nil {
 			return fmt.Errorf("failed to parse Rewrite rule Regexp: %s", err)

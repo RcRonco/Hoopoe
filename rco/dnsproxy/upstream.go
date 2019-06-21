@@ -1,13 +1,11 @@
 package dnsproxy
 
 import (
-	"context"
-	"fmt"
 	"github.com/armon/go-metrics"
 	"github.com/miekg/dns"
 	"github.com/prometheus/common/log"
-	"net"
 	"sync"
+	"time"
 )
 
 const (
@@ -27,15 +25,21 @@ type UpstreamsManager struct {
 	Servers []UpstreamServer
 	LBType  uint8
 
-	rrLB      *IndexRoundRobin
-	regionMap map[string]ServersView
+	rrLB             *IndexRoundRobin
+	regionMap        *RegionMap
+	serversRegionMap map[string]ServersView
 
-	clientMap []ClientsSubnet
+	Timeout time.Duration
 }
 
-func NewUpstreamsManager(servers []UpstreamServer, lbType string, clientMappingFile string) *UpstreamsManager {
+func NewUpstreamsManager(servers []UpstreamServer, lbType string, regionMap *RegionMap, timeout string) *UpstreamsManager {
 	usm := new(UpstreamsManager)
 	usm.Servers = servers
+	var err error
+	usm.Timeout, err = time.ParseDuration(timeout)
+	if err != nil {
+		log.Fatal("Failed to parse Timeout")
+	}
 	if lbType == "RoundRobin" {
 		usm.LBType = RoundRobinLB
 		usm.rrLB = &IndexRoundRobin{
@@ -45,64 +49,46 @@ func NewUpstreamsManager(servers []UpstreamServer, lbType string, clientMappingF
 	} else {
 		usm.LBType = ByOrderLB
 	}
-	cmInitialized := false
+	usm.regionMap = regionMap
+
 	for _, srv := range usm.Servers {
 		if region, ok := srv.Annotations["region"]; ok {
-			if !cmInitialized {
-				if err := usm.loadSubnetMap(clientMappingFile); err != nil {
-					log.Errorf("%s", err)
-					return nil
-				}
-				cmInitialized = true
-			}
-			usm.regionMap[region] = append(usm.regionMap[region], &srv)
-
+			usm.serversRegionMap[region] = append(usm.serversRegionMap[region], &srv)
 		}
-		// Include all Upstreams to all region group
-		usm.regionMap[AllGroupName] = append(usm.regionMap[AllGroupName], &srv)
+		// Include all Upstreams to "all" region group
+		usm.serversRegionMap[AllGroupName] = append(usm.serversRegionMap[AllGroupName], &srv)
 	}
 
 	return usm
 }
 
-func (usm *UpstreamsManager) GetRegion(ip string) (error, string) {
-	// If client map is empty return all servers
-	if len(usm.clientMap) < 1 {
-		return nil, AllGroupName
-	}
-
-	ipAddr := net.ParseIP(ip)
-	if ipAddr == nil {
-		return fmt.Errorf("faild to parse IP: %s", ip), ""
-	}
-	// find a matching region that the ip fitting in the network
-	for _, clientSubnet := range usm.clientMap {
-		if clientSubnet.Network.Contains(ipAddr) {
-			return nil, clientSubnet.Region
-		}
-	}
-
-	return nil, AllGroupName
-}
-
 // Get Matching Upstream Servers
 func (usm *UpstreamsManager) UpstreamSelector(req *dns.Msg, sourceIP string) (error, ServersView) {
-	// Get matching region
-	if err, region := usm.GetRegion(sourceIP); err == nil {
-		return err, nil
-	} else {
-		// Get regional upstream servers
-		if serversList, ok := usm.regionMap[region]; ok {
-			return nil, serversList
-		} else {
-			// Fallback to All server group
-			return nil, usm.regionMap[AllGroupName]
-		}
+	var region string
+
+	// Skip region checking if region map do not exists
+	if usm.regionMap == nil {
+		goto allServers
 	}
+
+	// Get matching region
+	region = usm.regionMap.GetRegion(sourceIP)
+
+	// Get regional upstream servers
+	if serversList, ok := usm.serversRegionMap[region]; ok {
+		return nil, serversList
+	} else {
+		// Fallback to All server group
+		goto allServers
+	}
+
+	allServers:
+		return nil, usm.serversRegionMap[AllGroupName]
 }
 
 // Internal function of passing requests to the upstream DNS server
-func (usm *UpstreamsManager) forwardRequest(ctx context.Context, req *dns.Msg, sourceIP string) *dns.Msg {
+func (usm *UpstreamsManager) forwardRequest(req *dns.Msg, sourceIP string) *dns.Msg {
+	startTime := time.Now()
 	// Create a DNS client
 	client := new(dns.Client)
 
@@ -113,8 +99,8 @@ func (usm *UpstreamsManager) forwardRequest(ctx context.Context, req *dns.Msg, s
 		return nil
 	}
 
-	_, ok := ctx.Deadline()
-	for i :=0; ok; i++ {
+	currentTime := time.Now()
+	for i :=0; currentTime.Before(startTime.Add(usm.Timeout)); i++ {
 		if usm.LBType == RoundRobinLB {
 			remoteHost = servers[usm.rrLB.LimitedGet(len(servers) - 1)].Address
 		} else {
@@ -126,6 +112,7 @@ func (usm *UpstreamsManager) forwardRequest(ctx context.Context, req *dns.Msg, s
 		} else if len(resp.Answer) > 0 {
 			return resp
 		}
+		currentTime = time.Now()
 	}
 
 	return nil

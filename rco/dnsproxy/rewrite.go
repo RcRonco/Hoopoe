@@ -52,10 +52,10 @@ func (r *RewriteRule) Parse(rawRule []string) error {
 	}
 
 	// Validate the rule patterns match DNS standard + templating
-	if matched, _ := regexp.MatchString(DNS_REGEXPR, rawRule[PatternOffset]); !matched {
+	if ValidateDNSFormat(rawRule[PatternOffset]) {
 		return fmt.Errorf("rewrite pattern must be valid dns string: %s", rawRule[PatternOffset])
 	}
-	if matched, _ := regexp.MatchString(DNS_REGEXPR, rawRule[ReplacementOffset]); !matched {
+	if ValidateDNSFormat(rawRule[ReplacementOffset]) {
 		return fmt.Errorf("rewrite replacement must be valid dns string: %s", rawRule[ReplacementOffset])
 	}
 	// Validate the templating is written correctly brackets
