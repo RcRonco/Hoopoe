@@ -26,7 +26,7 @@ type DNSProxy struct {
 	rulesEngine    *RuleEngine
 	templateEngine *TemplateEngine
 	usManager      *UpstreamsManager
-	regionMap      *RegionMap
+	regionMap      RegionMap
 }
 
 func NewDNSProxy(configPath string) *DNSProxy {
@@ -51,8 +51,8 @@ func (d *DNSProxy) Init(confPath string) {
 	// Load all engines and managers
 	d.rulesEngine = NewRuleEngine(d.config.Rules)
 	d.rulesEngine.SetScanAll(d.config.ScanAll)
-	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, d.regionMap, d.config.UpstreamTimeout)
-	d.templateEngine = NewTemplateEngine(d.regionMap)
+	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, &d.regionMap, d.config.UpstreamTimeout)
+	d.templateEngine = NewTemplateEngine(&d.regionMap)
 
 	// Enable Telemetry
 	if d.config.Telemetry.Enabled {
