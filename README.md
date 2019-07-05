@@ -1,6 +1,6 @@
 # Hoopoe - DNS Proxy
-## Description
-Hoopoe (pronounced Hu-pu) is a simple DNS Proxy for rewrites, written in Go
+![test image size](docs/data/hoopoe-small.png)  
+Hoopoe (pronounced Hu-pu as the [bird](https://en.wikipedia.org/wiki/Hoopoe)) is a simple DNS Proxy for rewrites, written in Go
 
 ### Install and Run
 ###### Build
