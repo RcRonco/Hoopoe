@@ -13,7 +13,6 @@ const (
 	LBTypeDefaultConfig = "ByOrder"
 	AddressDefaultConfig = "127.0.0.1:53"
 	TelemetryEnabledDefaultConfig = false
-	TelemetryAddressDefaultConfig = "127.0.0.1:8080"
 	EnableAccessLogDefaultConfig = true
 	AccessLogPathDefaultConfig = "/var/log/hoopoe/access.log"
 	ClientMapPathDefaultConfig = ""
@@ -66,8 +65,7 @@ func BuildConfig(filePath string) Config {
 	viper.AddConfigPath(filepath.Dir(filePath))
 	viper.SetDefault("LBType", LBTypeDefaultConfig)
 	viper.SetDefault("Address", AddressDefaultConfig)
-	viper.SetDefault("Telemetry.Enabled", TelemetryEnabledDefaultConfig)
-	viper.SetDefault("Telemetry.Address", TelemetryAddressDefaultConfig)
+	viper.SetDefault("Telemetry.Address", "")
 	viper.SetDefault("EnableAccessLog", EnableAccessLogDefaultConfig)
 	viper.SetDefault("AccessLogPath", AccessLogPathDefaultConfig)
 	viper.SetDefault("ClientMapFile", ClientMapPathDefaultConfig)

@@ -11,7 +11,6 @@ import (
 )
 
 type TelemetryConfig struct {
-	Enabled bool   `mapstructure:"Enabled"`
 	Address string `mapstructure:"Address"`
 }
 
@@ -36,7 +35,7 @@ func (s *TelemetryServer) Init() {
 }
 
 func (s *TelemetryServer) ListenAndServe() {
-	if s.config.Enabled {
+	if s.config.Address != "" {
 		if err := http.ListenAndServe(s.config.Address, nil); err != nil {
 			handleError(err, 26)
 		}

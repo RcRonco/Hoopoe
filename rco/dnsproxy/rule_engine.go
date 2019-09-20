@@ -1,14 +1,9 @@
 package dnsproxy
 
 import (
+	"errors"
 	log "github.com/Sirupsen/logrus"
 	"strings"
-)
-
-const (
-	ALLOWED int8 = 1 << iota
-	BLOCKED int8 = 1 << iota
-	ERROR   int8 = 1 << iota
 )
 
 const (
@@ -23,8 +18,6 @@ const (
 	AllowType
 	DenyType
 )
-
-
 
 const (
 	PREFIX int8 = iota
@@ -61,6 +54,10 @@ type Rule interface {
 type RuleEngine struct {
 	rules   map[int8][]Rule
 	scanAll bool
+}
+
+func (re *RuleEngine) Name() string {
+	return "RulesEngine"
 }
 
 func (re *RuleEngine) SetScanAll(scanAll bool) {
@@ -110,9 +107,24 @@ func NewRuleEngine(rawRules []string) *RuleEngine {
 	return engine
 }
 
-func (re *RuleEngine) Apply(query string) (int8, string) {
+func (re *RuleEngine) Apply(query *EngineQuery, metadata RequestMetadata) (*EngineQuery, error) {
+	result := new(EngineQuery)
+	result.Queries = query.Queries
+	if len(query.Queries) <= 0 {
+		return nil, errors.New("can't get as input empty EngineQuery")
+	}
+	rwResult, newQuery := re.applyImpl(query.Queries[0].Name)
+	result.Queries[0].Name = newQuery
+	result.Queries[0].Type = ARecordType
+	query.Result = rwResult
+
+	return result, nil
+}
+
+func (re *RuleEngine) applyImpl(query string) (int8, string) {
 	// Convert query into UPPER case to match all UPPER case rulesEngine
 	var newQuery = strings.ToUpper(query)
+
 	// Apply Pass Rules
 	for _, mr := range re.rules[PassType] {
 		if pass, _ := mr.Apply(newQuery); pass {

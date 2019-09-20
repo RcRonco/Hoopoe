@@ -1,8 +1,7 @@
 package dnsproxy
 
 import (
-	"github.com/miekg/dns"
-	"net"
+	"errors"
 	"regexp"
 	"strings"
 )
@@ -12,30 +11,48 @@ const (
 )
 
 type TemplateEngine struct {
-	regionMap *RegionMap
 	templateLeftoverRegex *regexp.Regexp
 }
 
-func NewTemplateEngine(regionMap *RegionMap) *TemplateEngine {
-	tr := new(TemplateEngine)
-	tr.regionMap = regionMap
-	tr.templateLeftoverRegex = regexp.MustCompile(ExprLeftover)
-	return tr
+func NewTemplateEngine() *TemplateEngine {
+	te := new(TemplateEngine)
+	te.templateLeftoverRegex = regexp.MustCompile(ExprLeftover)
+	return te
 }
 
-func (tr *TemplateEngine) Replace(name string, reqIP net.Addr, req *dns.Msg) (int8, string) {
-	if !strings.Contains(name, "{:") {
-		return BLOCKED, name
+func (te *TemplateEngine) Name() string {
+	return "TemplatesEngine"
+}
+
+func (te *TemplateEngine) Apply(query *EngineQuery, metadata RequestMetadata) (*EngineQuery, error) {
+	result := new(EngineQuery)
+	result.Queries = query.Queries
+	if len(query.Queries) <= 0 {
+		return nil, errors.New("can't get as input an empty EngineQuery")
 	}
 
-	region := tr.regionMap.GetRegion(strings.Split(reqIP.String(), ":")[0])
-	if region == "" {
-		name = tr.templateLeftoverRegex.ReplaceAllString(name, "")
+	name := query.Queries[0].Name
+	// Check if template exists in current query
+	if !strings.Contains(name, "{") {
+		result.Result = ALLOWED
+		return result, nil
+	}
+
+	if metadata.Region == "" {
+		name = te.templateLeftoverRegex.ReplaceAllString(name, "")
 	} else {
 		// Replace all region templates with the client region
-		name = strings.Replace(name, "{REGION}", region, 0)
+		name = strings.Replace(name, "{REGION}", metadata.Region, 0)
 	}
 
-	return ALLOWED, name
-}
+	// Check if the query still contains any template chars ({,})
+	if isMatching, err := regexp.MatchString("({|})", name); err != nil || isMatching {
+		result.Result = BLOCKED
+		return result, err
+	}
 
+	result.Queries[0].Name = name
+	result.Result = ALLOWED
+
+	return result, nil
+}

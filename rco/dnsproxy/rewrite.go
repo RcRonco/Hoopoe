@@ -11,7 +11,6 @@ const (
 	ReplacementOffset = 3
 )
 
-
 type rewriteOptions struct {
 	SubstringReplacements int
 }
