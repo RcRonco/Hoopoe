@@ -3,12 +3,6 @@ package dnsproxy
 import "github.com/miekg/dns"
 
 const (
-	PTRRecordType       uint8 = 0
-	ARecordType         uint8 = 1
-	AFallbackRecordType uint8 = 2
-)
-
-const (
 	ALLOWED int8 = 1 << iota
 	BLOCKED int8 = 1 << iota
 	ERROR   int8 = 1 << iota
@@ -16,7 +10,7 @@ const (
 
 type Query struct {
 	Name string
-	Type uint8
+	Type uint16
 }
 
 type RequestMetadata struct {
@@ -25,9 +19,9 @@ type RequestMetadata struct {
 }
 
 type EngineQuery struct {
-	Queries    []Query
-	Result     int8
-	originRequest *dns.Msg
+	Queries []Query
+	Result  int8
+	dnsMsg  *dns.Msg
 }
 
 type Engine interface {

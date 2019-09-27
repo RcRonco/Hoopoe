@@ -103,21 +103,19 @@ func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
 	}
 
 	// Copy the message for applying rulesEngine on it
-	upstreamMsg := d.buildUpstreamMsg(resp, req)
-	if upstreamMsg == nil {
-		return
+	reply, err := d.processMsg(resp, req)
+	handleError(err, 107)
+	if reply == nil {
+		d.returnBlocked(resp, req)
 	}
 
-	// Make a request to the upstream server
-	reply := d.forwardRequest(upstreamMsg, resp.RemoteAddr().String())
-
-	respMsg := d.buildResponseMsg(req, reply)
-	err := resp.WriteMsg(respMsg)
-	handleError(err, 189)
+	respMsg := d.buildResponseMsg(req, reply.dnsMsg)
+	err = resp.WriteMsg(respMsg)
+	handleError(err, 114)
 }
 
-// build upstream message by applying Proxy rulesEngine
-func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.Msg {
+// process message by applying Engines
+func (d *DNSProxy) processMsg(resp dns.ResponseWriter, req *dns.Msg) (*EngineQuery, error) {
 	// Copy the message for applying rulesEngine on it
 	upstreamMsg := new(dns.Msg)
 	req.CopyTo(upstreamMsg)
@@ -127,50 +125,44 @@ func (d *DNSProxy) buildUpstreamMsg(resp dns.ResponseWriter, req *dns.Msg) *dns.
 		IPAddress: resp.RemoteAddr().String(),
 	}
 
-	// Run on every query entry in the request
-	for _, query := range req.Question {
-		engineQuery := new(EngineQuery)
-		engineQuery.Queries = append(engineQuery.Queries, Query{
+	// Only one question supported
+	query := req.Question[0]
+	engineQuery := new(EngineQuery)
+	engineQuery.dnsMsg = req
+	engineQuery.Queries = append(
+		engineQuery.Queries, Query{
 			Name: query.Name,
-			Type: ARecordType,
+			Type: query.Qtype,
 		})
-		for _, engine := range d.engines {
-			engineQuery, err := engine.Apply(engineQuery, metadata)
-			if err != nil {
-				return nil
-			}
-			if engineQuery.Result == BLOCKED {
-				d.returnBlocked(resp, req)
-				// Access Log
-				if d.config.AccessLog {
-					d.accessLog.Infof(
-						"%s: BLOCKED - Record %s",
-						engine.Name(),
-						resp.RemoteAddr().String(),
-						req.Question[0].String(),
-					)
-				}
-				return nil
-			}
+	// Run on each registered Engine
+	for _, engine := range d.engines {
+		// Process query with current Engine
+		engineQuery, err := engine.Apply(engineQuery, metadata)
+		if err != nil {
+			return nil, err
 		}
-
-		// TODO: Add sending to upstream_engine result for final build of upstream
-		// Append new Question the the message
-		rewrittenQuery := dns.Question{ Name: name, Qtype: query.Qtype, Qclass: query.Qclass}
-		upstreamMsg.Question = append(upstreamMsg.Question, rewrittenQuery)
+		// Check if engine return that this query need to be blocked
+		if engineQuery.Result == BLOCKED {
+			d.returnBlocked(resp, req)
+			// Access Log
+			if d.config.AccessLog {
+				d.accessLog.Infof(
+					"%s: BLOCKED - Record %s",
+					engine.Name(),
+					resp.RemoteAddr().String(),
+					req.Question[0].String(),
+				)
+			}
+			return nil, nil
+		}
 	}
 
-	return upstreamMsg
-}
-
-// Internal function of passing requests to the upstream DNS server
-func (d *DNSProxy) forwardRequest(req *dns.Msg, sourceIP string) *dns.Msg {
-	// Profiling the latency of the upstream servers
-	if d.config.Telemetry.Address != "" {
-		defer metrics.MeasureSince([]string{"hoopoe", "request_latency"}, time.Now())
+	engineQuery, err := d.usManager.Apply(engineQuery, metadata)
+	if err != nil {
+		return nil, err
 	}
 
-	return d.usManager.forwardRequest(req, sourceIP)
+	return engineQuery, nil
 }
 
 // Build response message for server message
@@ -205,8 +197,13 @@ func (d *DNSProxy) handlePtr(resp dns.ResponseWriter, req *dns.Msg) {
 	upstreamMsg := new(dns.Msg)
 	req.CopyTo(upstreamMsg)
 
+	metadata := RequestMetadata{
+		Region: d.regionMap.GetRegion(strings.Split(resp.RemoteAddr().String(), ":")[0]),
+		IPAddress: resp.RemoteAddr().String(),
+	}
+
 	// Send it to the upstream server
-	reply := d.forwardRequest(upstreamMsg, resp.RemoteAddr().String())
+	reply := d.usManager.forwardRequest(upstreamMsg, metadata)
 
 	// Build response and send it
 	respMsg := new(dns.Msg)
@@ -214,27 +211,4 @@ func (d *DNSProxy) handlePtr(resp dns.ResponseWriter, req *dns.Msg) {
 	respMsg.Answer = reply.Answer
 	err := resp.WriteMsg(respMsg)
 	handleError(err, 111)
-}
-
-// Internal function of passing requests to the upstream DNS server
-func (d *DNSProxy) forwardRequestImpl(req *dns.Msg) *dns.Msg {
-	// Create a DNS client
-	client := new(dns.Client)
-
-	// Make a request to the upstream server
-	for _, remoteHost := range d.config.RemoteHosts {
-		resp, _, err := client.Exchange(req, remoteHost.Address)
-		if err != nil && d.config.Telemetry.Address != ""  {
-			metrics.IncrCounterWithLabels([]string{"hoopoe_upstream_DROPS"}, 1, []metrics.Label{
-				{
-					Name:  "upstream_address",
-					Value: remoteHost.Address,
-				},
-			})
-		} else if len(resp.Answer) > 0 {
-			return resp
-		}
-	}
-
-	return nil
 }

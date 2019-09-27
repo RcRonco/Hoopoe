@@ -3,6 +3,7 @@ package dnsproxy
 import (
 	"errors"
 	log "github.com/Sirupsen/logrus"
+	"github.com/miekg/dns"
 	"strings"
 )
 
@@ -113,9 +114,12 @@ func (re *RuleEngine) Apply(query *EngineQuery, metadata RequestMetadata) (*Engi
 	if len(query.Queries) <= 0 {
 		return nil, errors.New("can't get as input empty EngineQuery")
 	}
+	if query.Queries[0].Type != dns.TypeA && query.Queries[0].Type != dns.TypeAAAA {
+		return result, nil
+	}
 	rwResult, newQuery := re.applyImpl(query.Queries[0].Name)
 	result.Queries[0].Name = newQuery
-	result.Queries[0].Type = ARecordType
+	result.Queries[0].Type = query.Queries[0].Type
 	query.Result = rwResult
 
 	return result, nil

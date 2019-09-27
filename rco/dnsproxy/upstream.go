@@ -74,14 +74,20 @@ func (usm *UpstreamsManager) Apply(query *EngineQuery, metadata RequestMetadata)
 		return nil, errors.New("can't get as input empty EngineQuery")
 	}
 
+	// Run on each query
+	// First query is the original after rewrites
+	// Second and later are fallback rules
 	for _, q := range query.Queries {
-		upsRequest := usm.buildUpstreamMsg(query.originRequest, q)
+		// Build upstream message and forward to Upstream Servers
+		upsRequest := usm.buildUpstreamMsg(query.dnsMsg, q)
 		resp := usm.forwardRequest(upsRequest, metadata)
+
+		// If response is not valid continue to next fallback query
 		if resp != nil {
 			return &EngineQuery{
-				Queries:       query.Queries,
-				Result:        ALLOWED,
-				originRequest: resp,
+				Queries: query.Queries,
+				Result:  ALLOWED,
+				dnsMsg:  resp,
 			}, nil
 		}
 	}
@@ -92,13 +98,13 @@ func (usm *UpstreamsManager) Apply(query *EngineQuery, metadata RequestMetadata)
 func (usm *UpstreamsManager) buildUpstreamMsg(originReq *dns.Msg, query Query) *dns.Msg {
 	upstreamMsg := new(dns.Msg)
 	originReq.CopyTo(upstreamMsg)
-	upstreamMsg.Question = make([]dns.Question)
+	upstreamMsg.Question = make([]dns.Question, 1)
 	upstreamMsg.Question = append(upstreamMsg.Question, dns.Question{
 		Name:   query.Name,
-		Qtype:  dns.TypeA,
-		Qclass: dns.Q,
+		Qtype:  query.Type,
+		Qclass: originReq.Question[0].Qclass,
 	})
-	return nil
+	return upstreamMsg
 }
 
 // Internal function of passing requests to the upstream DNS server
