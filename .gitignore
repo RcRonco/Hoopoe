@@ -109,3 +109,5 @@ config.yml
 access.log
 output/*
 output/
+bin/
+bin/*
