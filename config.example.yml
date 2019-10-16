@@ -1,7 +1,15 @@
 ---
 Address: "127.0.0.1:8601"
-RemoteAddresses:
-  - "8.8.8.8:53"
+LBType: RoundRobin
+UpstreamServers:
+  - Address: "8.8.8.8:53"
+    Annotations:
+      region: "il"
+      domain: "co.il"
+  - Address: "8.8.4.4:53"
+      Annotations:
+        region: "us"
+        domain: "com"
 Telemetry:
   Enabled: true
   Address: "0.0.0.0:80"
@@ -19,4 +27,6 @@ ProxyRules:
   - Pass REGEXP www.youtube.com
   # Will rewrite every query ends with .co.il to .com and myorg.com to service.consul
   - Rewrite SUFFIX co.il com
-  - Rewrite SUFFIX myorg.com service.consul
+  - Rewrite REGEXP .*\.myorg.com$ service.consul
+  # Will replace all matching
+  - Template

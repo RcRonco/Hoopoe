@@ -11,14 +11,13 @@ const (
 	ReplacementOffset = 3
 )
 
-
 type rewriteOptions struct {
-	SubstringReplacements	int
+	SubstringReplacements int
 }
 
 type rewriteFunc func(*RewriteRule, string) (bool, string)
 
-// RULE-TYPE ACTION PATTERN REPLACEMENT OPTIONS
+// RULE-TYPE ACTION PATTERN REPLACEMENT OPTIONS...
 type RewriteRule struct {
 	options rewriteOptions
 	rwRule  rewriteFunc
@@ -39,21 +38,42 @@ func NewRewriteRule(rawRule []string) (error, *RewriteRule) {
 }
 
 func (r *RewriteRule) Parse(rawRule []string) error {
-	if len(rawRule) < 4 {
-		return errors.New("rewrite definition must have 4 fields")
+	// Validate the number of parameters in the rule definition
+	if len(rawRule) < ReplacementOffset + 1 {
+		return fmt.Errorf("rewrite definition must have at least %d fields", ReplacementOffset + 1)
 	}
 
+	// Validate action type
 	if val, ok := ActionMap[rawRule[ActionOffset]]; ok {
 		r.Action = val
 	} else {
 		return fmt.Errorf("action %s not supported", rawRule[ActionOffset])
 	}
 
+	// Validate the rule patterns match DNS standard + templating
+	if ValidateDNSFormat(rawRule[PatternOffset]) {
+		return fmt.Errorf("rewrite pattern must be valid dns string: %s", rawRule[PatternOffset])
+	}
+	//if ValidateDNSFormat(rawRule[ReplacementOffset]) {
+	//	return fmt.Errorf("rewrite replacement must be valid dns string: %s", rawRule[ReplacementOffset])
+	//}
+	// Validate the templating is written correctly brackets
+	if !ValidateTemplateBrackets(rawRule[PatternOffset]) {
+		return fmt.Errorf("replacement with template must be valid templating: %s", rawRule[PatternOffset])
+	}
+	if !ValidateTemplateBrackets(rawRule[ReplacementOffset]) {
+		return fmt.Errorf("replacement with template must be valid templating: %s", rawRule[ReplacementOffset])
+	}
+
+	// Build rule
 	r.Pattern = rawRule[PatternOffset]
 	r.Replacement = rawRule[ReplacementOffset]
+	// Add . suffix
 	if !strings.HasSuffix(r.Replacement , ".") {
 		r.Replacement  += "."
 	}
+
+	// Compile Regex pattern
 	if r.Action == REGEXP {
 		if pattern, err := regexp.Compile(r.Pattern); err != nil {
 			r.Regex = pattern
@@ -62,12 +82,15 @@ func (r *RewriteRule) Parse(rawRule []string) error {
 		}
 	}
 
+	// Build Function Map
 	if err, fnc := rewriteFuncMap(r.Action); err == nil {
 		r.rwRule = fnc
 	} else {
 		return fmt.Errorf("rewrite function not found, Action: %s\tMessage: %s",rawRule[ActionOffset], err)
 	}
 
+	// TODO: Add support for limiting the number of replacement occurs
+	r.options.SubstringReplacements = 0
 
 	return nil
 }

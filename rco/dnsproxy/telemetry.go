@@ -2,13 +2,17 @@ package dnsproxy
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-metrics"
 	prommetrics "github.com/armon/go-metrics/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 )
+
+type TelemetryConfig struct {
+	Address string `mapstructure:"Address"`
+}
 
 type TelemetryServer struct {
 	config *TelemetryConfig
@@ -17,6 +21,7 @@ type TelemetryServer struct {
 func NewTelemetryServer(conf *TelemetryConfig) *TelemetryServer {
 	telemetry := new(TelemetryServer)
 	telemetry.config = conf
+	telemetry.Init()
 	return telemetry
 }
 
@@ -31,7 +36,7 @@ func (s *TelemetryServer) Init() {
 }
 
 func (s *TelemetryServer) ListenAndServe() {
-	if s.config.Enabled {
+	if s.config.Address != "" {
 		if err := http.ListenAndServe(s.config.Address, nil); err != nil {
 			handleError(err, 26)
 		}

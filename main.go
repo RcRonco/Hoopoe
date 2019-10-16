@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/RcRonco/Hoopoe/rco/dnsproxy"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 )
 

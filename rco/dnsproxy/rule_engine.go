@@ -1,14 +1,10 @@
 package dnsproxy
 
 import (
-	log "github.com/Sirupsen/logrus"
+	"errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/miekg/dns"
 	"strings"
-)
-
-const (
-	ALLOWED int8 = 1 << iota
-	BLOCKED int8 = 1 << iota
-	ERROR   int8 = 1 << iota
 )
 
 const (
@@ -61,6 +57,10 @@ type RuleEngine struct {
 	scanAll bool
 }
 
+func (re *RuleEngine) Name() string {
+	return "RulesEngine"
+}
+
 func (re *RuleEngine) SetScanAll(scanAll bool) {
 	re.scanAll = scanAll
 }
@@ -70,16 +70,20 @@ func (re *RuleEngine) SetScanAll(scanAll bool) {
 	Rule definition format:
 	RULETYPE ACTION FROM TO OPTIONS
  */
-func NewEngine(rawRules []string) *RuleEngine {
+func NewRuleEngine(rawRules []string) *RuleEngine {
 	engine := new(RuleEngine)
 	engine.rules = make(map[int8][]Rule)
 
-	log.Info("Start compiling rules")
+	log.Info("Start compiling rulesEngine")
+
+	// Compile every rule definition
 	for index, rr := range rawRules {
+		// Split all rulesEngine into fields and convert to UPPER case
 		fields := strings.Fields(strings.ToUpper(rr))
 		if !strings.HasSuffix(fields[PatternOffset], ".") {
 			fields[PatternOffset] += "."
 		}
+		// Parse rulesEngine by type and add to the rule map
 		switch fields[RuleTypeOffset] {
 			case "REWRITE", "RW":
 				if err, rw := NewRewriteRule(fields); err != nil {
@@ -100,12 +104,32 @@ func NewEngine(rawRules []string) *RuleEngine {
 		}
 	}
 
-	log.Info("Compiling rules ended successfully")
+	log.Info("Compiling rulesEngine ended successfully")
 	return engine
 }
 
-func (re *RuleEngine) Apply(query string) (int8, string) {
+func (re *RuleEngine) Apply(query *EngineQuery, metadata RequestMetadata) (*EngineQuery, error) {
+	result := new(EngineQuery)
+	result.Queries = query.Queries
+	if len(query.Queries) <= 0 {
+		return nil, errors.New("can't get as input empty EngineQuery")
+	}
+	if query.Queries[0].Type != dns.TypeA && query.Queries[0].Type != dns.TypeAAAA {
+		return result, nil
+	}
+	rwResult, newQuery := re.applyImpl(query.Queries[0].Name)
+	result.Queries[0].Name = newQuery
+	result.Queries[0].Type = query.Queries[0].Type
+	result.Result = rwResult
+	result.dnsMsg = query.dnsMsg
+
+	return result, nil
+}
+
+func (re *RuleEngine) applyImpl(query string) (int8, string) {
+	// Convert query into UPPER case to match all UPPER case rulesEngine
 	var newQuery = strings.ToUpper(query)
+
 	// Apply Pass Rules
 	for _, mr := range re.rules[PassType] {
 		if pass, _ := mr.Apply(newQuery); pass {
@@ -144,6 +168,6 @@ func (re *RuleEngine) Apply(query string) (int8, string) {
 		}
 	}
 
-	// If passed allow rules and not blocked by deny or change return ALLOWED with original string
+	// If passed allow rulesEngine and not blocked by deny or change return ALLOWED with original string
 	return ALLOWED, newQuery
 }

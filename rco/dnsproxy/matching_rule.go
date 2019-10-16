@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type stringMatchingFunc func(rule *MatchingRule, string) bool
+type stringMatchingFunc func(*MatchingRule, string) bool
 
 func matchingFuncMap(action int8) (error, stringMatchingFunc) {
 	switch action {
@@ -43,19 +43,32 @@ type MatchingRule struct {
 }
 
 func (r *MatchingRule) Parse(rawRule []string) error {
-	if len(rawRule) < 3 {
-		return fmt.Errorf("%s definition must have 3 fields", rawRule[RuleTypeOffset])
+	// Validate the number of parameters in the rule definition
+	if len(rawRule) < PatternOffset + 1 {
+		return fmt.Errorf("%s definition must have at least %d fields",
+						  rawRule[RuleTypeOffset], PatternOffset + 1)
 	}
 
+	// Validate action type
 	if val, ok := ActionMap[rawRule[ActionOffset]]; ok {
 		r.Action = val
 	} else {
 		return fmt.Errorf("action %s not supported", rawRule[ActionOffset])
 	}
 
+	// Validate the rule patterns match DNS standard + templating
+	if ValidateDNSFormat(rawRule[PatternOffset]) {
+		return fmt.Errorf("pattern must be valid dns string: %s", rawRule[PatternOffset])
+	}
+
+	// Validate the templating is written correctly brackets
+	if !ValidateTemplateBrackets(rawRule[PatternOffset]) {
+		return fmt.Errorf("pattern with template must be valid templating: %s", rawRule[PatternOffset])
+	}
+
 	r.Pattern = rawRule[PatternOffset]
 
-	// Validate rules compiled before start running
+	// Validate rulesEngine compiled before start running
 	if r.Action == REGEXP {
 		if regex, err := regexp.Compile(r.Pattern); err != nil {
 			return fmt.Errorf("failed to parse Rewrite rule Regexp: %s", err)
@@ -64,12 +77,12 @@ func (r *MatchingRule) Parse(rawRule []string) error {
 		}
 	}
 
+	// Build Function Map
 	if err, fnc := matchingFuncMap(r.Action); err == nil {
 		r.matchingRule = fnc
 	} else {
 		return fmt.Errorf("rewrite function not found, Action: %s\tMessage: %s",rawRule[ActionOffset], err)
 	}
-
 
 	return nil
 }
