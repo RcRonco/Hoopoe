@@ -1,0 +1,92 @@
+package dnsproxy
+
+import (
+	"github.com/sirupsen/logrus"
+	"testing"
+)
+
+func TestConfigBuildConfigNotExists(t *testing.T) {
+	logrus.StandardLogger().ExitFunc = func(code int){}
+	BuildConfig("test_data/config_not_exists_aaaa.yaml")
+}
+
+func TestConfigBuildConfigEmptyFile(t *testing.T) {
+	logrus.StandardLogger().ExitFunc = func(code int){}
+	BuildConfig("test_data/config_empty.yaml")
+}
+
+func TestConfigBuildConfigMinimal(t *testing.T) {
+	config := BuildConfig("test_data/config_minimal.yaml")
+	if config.LBType != LBTypeDefaultConfig {
+		t.Errorf("LBType default not equal to {}", LBTypeDefaultConfig)
+	}
+	if config.ClientMapFile != ClientMapPathDefaultConfig {
+		t.Errorf("ClientMap default not equal to {}", ClientMapPathDefaultConfig)
+	}
+	if config.Telemetry.Address != TelemetryAddressDefaultConfig {
+		t.Errorf("Telemetry.Address default not equal to {}", TelemetryAddressDefaultConfig)
+	}
+	if config.Telemetry.Enabled != TelemetryEnabledDefaultConfig {
+		t.Errorf("Telemetry.Enabled default not equal to {}", TelemetryEnabledDefaultConfig)
+	}
+	if config.AccessLog != EnableAccessLogDefaultConfig {
+		t.Errorf("EnableAccessLog default not equal to {}", EnableAccessLogDefaultConfig)
+	}
+	if config.AccessLogPath != AccessLogPathDefaultConfig {
+		t.Errorf("AccessLogPath default not equal to {}", AccessLogPathDefaultConfig)
+	}
+	if config.LocalAddress != AddressDefaultConfig {
+		t.Errorf("Address default not equal to {}", AddressDefaultConfig)
+	}
+	if config.ScanAll != ScanAllDefaultConfig {
+		t.Errorf("ScanALl default not equal to {}", ScanAllDefaultConfig)
+	}
+
+	if len(config.RemoteHosts) != 1 ||
+		config.RemoteHosts[0].Address != "8.8.8.8:53" ||
+		config.RemoteHosts[0].Annotations["mocking"] != "true" {
+		t.Error("Failed to parse Remote Hosts")
+	}
+
+	if len(config.Rules) != 1 || config.Rules[0] == "Rewrite PREFIX mail www" {
+		t.Error("Failed to parse Rules")
+	}
+}
+
+func TestConfigBuildConfigFull(t *testing.T) {
+	config := BuildConfig("test_data/config_full.yaml")
+	if config.LBType != "RoundRobin" {
+		t.Errorf("LBType not equal to {}", "RoundRobin")
+	}
+	if config.ClientMapFile != "/etc/hoopoe/clientmap.yaml" {
+		t.Errorf("ClientMap not equal to {}", "/etc/hoopoe/clientmap.yaml")
+	}
+	if config.Telemetry.Address != "0.0.0.0:80" {
+		t.Errorf("Telemetry.Address not equal to {}", "0.0.0.0:80")
+	}
+	if config.Telemetry.Enabled != true {
+		t.Errorf("Telemetry.Enabled not equal to {}", true)
+	}
+	if config.AccessLog != true {
+		t.Errorf("EnableAccessLog default not equal to {}", true)
+	}
+	if config.AccessLogPath != "access.log" {
+		t.Errorf("AccessLogPath default not equal to {}", "access.log")
+	}
+	if config.LocalAddress != "127.0.0.1:8601" {
+		t.Errorf("Address not equal to {}", "127.0.0.1:8601")
+	}
+	if config.ScanAll != true {
+		t.Errorf("ScanALl default not equal to {}", true)
+	}
+
+	if len(config.RemoteHosts) != 1 ||
+		config.RemoteHosts[0].Address != "8.8.8.8:53" ||
+		config.RemoteHosts[0].Annotations["mocking"] != "true" {
+		t.Error("Failed to parse Remote Hosts")
+	}
+
+	if len(config.Rules) != 1 || config.Rules[0] == "Rewrite PREFIX mail www" {
+		t.Error("Failed to parse Rules")
+	}
+}

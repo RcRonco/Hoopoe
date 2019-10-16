@@ -33,8 +33,13 @@ type UpstreamsManager struct {
 	Timeout time.Duration
 }
 
+func NewServerView(size uint) ServersView {
+	return make([]*UpstreamServer, size)
+}
+
 func NewUpstreamsManager(servers []UpstreamServer, lbType string, regionMap *RegionMap, timeout string) *UpstreamsManager {
 	usm := new(UpstreamsManager)
+	usm.serversRegionMap = make(map[string]ServersView)
 	usm.Servers = servers
 	var err error
 	usm.Timeout, err = time.ParseDuration(timeout)
@@ -52,12 +57,13 @@ func NewUpstreamsManager(servers []UpstreamServer, lbType string, regionMap *Reg
 	}
 	usm.regionMap = regionMap
 
-	for _, srv := range usm.Servers {
+	for i, _:= range usm.Servers {
+		srv := &(usm.Servers[i])
 		if region, ok := srv.Annotations["region"]; ok {
-			usm.serversRegionMap[region] = append(usm.serversRegionMap[region], &srv)
+			usm.serversRegionMap[region] = append(usm.serversRegionMap[region], srv)
 		}
 		// Include all Upstreams to "all" region group
-		usm.serversRegionMap[AllGroupName] = append(usm.serversRegionMap[AllGroupName], &srv)
+		usm.serversRegionMap[AllGroupName] = append(usm.serversRegionMap[AllGroupName], srv)
 	}
 
 	return usm
@@ -99,11 +105,11 @@ func (usm *UpstreamsManager) buildUpstreamMsg(originReq *dns.Msg, query Query) *
 	upstreamMsg := new(dns.Msg)
 	originReq.CopyTo(upstreamMsg)
 	upstreamMsg.Question = make([]dns.Question, 1)
-	upstreamMsg.Question = append(upstreamMsg.Question, dns.Question{
+	upstreamMsg.Question[0] = dns.Question{
 		Name:   query.Name,
 		Qtype:  query.Type,
 		Qclass: originReq.Question[0].Qclass,
-	})
+	}
 	return upstreamMsg
 }
 
@@ -115,7 +121,7 @@ func (usm *UpstreamsManager) forwardRequest(req *dns.Msg, meta RequestMetadata) 
 
 	// Make a request to the upstream server
 	var remoteHost string
-	err, servers := usm.UpstreamSelector(req, meta.IPAddress)
+	err, servers := usm.UpstreamSelector(req, meta)
 	if err != nil {
 		return nil
 	}
@@ -123,13 +129,14 @@ func (usm *UpstreamsManager) forwardRequest(req *dns.Msg, meta RequestMetadata) 
 	currentTime := time.Now()
 	for i :=0; currentTime.Before(startTime.Add(usm.Timeout)); i++ {
 		if usm.LBType == RoundRobinLB {
-			remoteHost = servers[usm.rrLB.LimitedGet(len(servers) - 1)].Address
+			remoteHost = servers[usm.rrLB.LimitedGet(len(servers))].Address
 		} else {
 			remoteHost = servers[i].Address
 		}
 		resp, _, err := client.Exchange(req, remoteHost)
 		if err != nil {
 			metrics.SetGauge([]string{remoteHost, "DROPS"}, 1)
+			log.Warnf("Error while contacting server: %s, message: %s", remoteHost, err)
 		} else if len(resp.Answer) > 0 {
 			return resp
 		}
@@ -140,19 +147,14 @@ func (usm *UpstreamsManager) forwardRequest(req *dns.Msg, meta RequestMetadata) 
 }
 
 // Get Matching Upstream Servers
-func (usm *UpstreamsManager) UpstreamSelector(req *dns.Msg, sourceIP string) (error, ServersView) {
-	var region string
-
+func (usm *UpstreamsManager) UpstreamSelector(req *dns.Msg, meta RequestMetadata) (error, ServersView) {
 	// Skip region checking if region map do not exists
 	if usm.regionMap == nil {
 		goto allServers
 	}
 
-	// Get matching region
-	region = usm.regionMap.GetRegion(sourceIP)
-
 	// Get regional upstream servers
-	if serversList, ok := usm.serversRegionMap[region]; ok {
+	if serversList, ok := usm.serversRegionMap[meta.Region]; ok {
 		return nil, serversList
 	} else {
 		// Fallback to All server group

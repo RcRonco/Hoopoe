@@ -2,7 +2,7 @@ package dnsproxy
 
 import (
 	"errors"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/miekg/dns"
 	"strings"
 )
@@ -120,7 +120,8 @@ func (re *RuleEngine) Apply(query *EngineQuery, metadata RequestMetadata) (*Engi
 	rwResult, newQuery := re.applyImpl(query.Queries[0].Name)
 	result.Queries[0].Name = newQuery
 	result.Queries[0].Type = query.Queries[0].Type
-	query.Result = rwResult
+	result.Result = rwResult
+	result.dnsMsg = query.dnsMsg
 
 	return result, nil
 }

@@ -27,6 +27,7 @@ func (te *TemplateEngine) Name() string {
 func (te *TemplateEngine) Apply(query *EngineQuery, metadata RequestMetadata) (*EngineQuery, error) {
 	result := new(EngineQuery)
 	result.Queries = query.Queries
+	result.dnsMsg = query.dnsMsg
 	if len(query.Queries) <= 0 {
 		return nil, errors.New("can't get as input an empty EngineQuery")
 	}

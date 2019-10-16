@@ -1,9 +1,9 @@
 package dnsproxy
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/armon/go-metrics"
 	"github.com/miekg/dns"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"strings"
 	"time"
@@ -44,7 +44,7 @@ func (d *DNSProxy) Init(confPath string) {
 
 	// Load Region Map
 	if err, d.regionMap = NewRegionMap(d.config.ClientMapFile); err != nil {
-		log.Errorf("Failed to open client map file: %s", d.config.AccessLogPath)
+		log.Errorf("Failed to open client map file: %s, message: %s", d.config.ClientMapFile, err)
 		log.Warning("Skipping Client map configuration")
 	}
 
@@ -55,11 +55,8 @@ func (d *DNSProxy) Init(confPath string) {
 	d.engines = append(d.engines, NewTemplateEngine())
 	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, &d.regionMap, d.config.UpstreamTimeout)
 
-	// Enable Telemetry
-	if d.config.Telemetry.Address == "" {
-		d.telemetry = NewTelemetryServer(&d.config.Telemetry)
-		d.telemetry.Init()
-	}
+	// Init Telemetry
+	d.telemetry = NewTelemetryServer(&d.config.Telemetry)
 
 	// Enable Access Log
 	if d.config.AccessLog {
@@ -82,10 +79,12 @@ func (d *DNSProxy) ListenAndServe() error {
 
 	// Build the DNS server
 	d.server = &dns.Server{Addr: d.config.LocalAddress, Net: "udp", Handler: mux}
-	log.Infof("Starting server, listening on: %s", d.config.LocalAddress)
 
 	// Start telemetry server, will exit immediately if telemetry is disabled
 	go d.telemetry.ListenAndServe()
+	log.Infof("Starting Telemetry, listening on: %s", d.config.Telemetry.Address)
+
+	log.Infof("Starting server, listening on: %s", d.config.LocalAddress)
 
 	// Start the DNS server
 	return d.server.ListenAndServe()
@@ -107,11 +106,11 @@ func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
 	handleError(err, 107)
 	if reply == nil {
 		d.returnBlocked(resp, req)
+	} else {
+		respMsg := d.buildResponseMsg(req, reply.dnsMsg)
+		err = resp.WriteMsg(respMsg)
+		handleError(err, 114)
 	}
-
-	respMsg := d.buildResponseMsg(req, reply.dnsMsg)
-	err = resp.WriteMsg(respMsg)
-	handleError(err, 114)
 }
 
 // process message by applying Engines
@@ -143,7 +142,6 @@ func (d *DNSProxy) processMsg(resp dns.ResponseWriter, req *dns.Msg) (*EngineQue
 		}
 		// Check if engine return that this query need to be blocked
 		if engineQuery.Result == BLOCKED {
-			d.returnBlocked(resp, req)
 			// Access Log
 			if d.config.AccessLog {
 				d.accessLog.Infof(

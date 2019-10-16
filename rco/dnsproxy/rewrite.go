@@ -54,9 +54,9 @@ func (r *RewriteRule) Parse(rawRule []string) error {
 	if ValidateDNSFormat(rawRule[PatternOffset]) {
 		return fmt.Errorf("rewrite pattern must be valid dns string: %s", rawRule[PatternOffset])
 	}
-	if ValidateDNSFormat(rawRule[ReplacementOffset]) {
-		return fmt.Errorf("rewrite replacement must be valid dns string: %s", rawRule[ReplacementOffset])
-	}
+	//if ValidateDNSFormat(rawRule[ReplacementOffset]) {
+	//	return fmt.Errorf("rewrite replacement must be valid dns string: %s", rawRule[ReplacementOffset])
+	//}
 	// Validate the templating is written correctly brackets
 	if !ValidateTemplateBrackets(rawRule[PatternOffset]) {
 		return fmt.Errorf("replacement with template must be valid templating: %s", rawRule[PatternOffset])
