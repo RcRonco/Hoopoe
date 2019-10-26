@@ -1,4 +1,4 @@
 name: Hoopoe
-description:
+description: Hoopoe a simple DNS Proxy for rewrites, written in Go
 markdown: GFM
 theme: jekyll-theme-slate
