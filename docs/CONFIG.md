@@ -1,3 +1,8 @@
+```yaml
+layout: configuration
+title: "Configuration"
+permalink: /CONFIG/
+```
 ## Configuration file
 
 Configuration Options for the YAML configuration file.
