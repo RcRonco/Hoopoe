@@ -1,13 +1,13 @@
 # Hoopoe - DNS Proxy
-![test image size](docs/data/hoopoe-small.png)  
+![test image size](data/hoopoe-small.png)  
 Hoopoe (pronounced Hu-pu as the [bird](https://en.wikipedia.org/wiki/Hoopoe)) is a simple DNS Proxy for rewrites, written in Go
 
 ## Content
 * [Getting Started](#install-and-run)
-* [Configuration](docs/CONFIG.md)
-* [Rules](docs/RULES.md)
-* [client_mapping](docs/CLIENT_MAPPING.md)
-* [Internals](docs/INTERNAL.md)
+* [Configuration](CONFIG.md)
+* [Rules](RULES.md)
+* [client_mapping](CLIENT_MAPPING.md)
+* [Internals](INTERNAL.md)
 
 ### Install and Run
 ###### Build
