@@ -7,7 +7,7 @@ Hoopoe (pronounced Hu-pu as the [bird](https://en.wikipedia.org/wiki/Hoopoe)) is
 * [Configuration](CONFIG.md)
 * [Rules](RULES.md)
 * [client_mapping](CLIENT_MAPPING.md)
-* [Internals](INTERNAL.md)
+* [Internals](INTERNALS.md)
 
 ### Install and Run
 ###### Build
