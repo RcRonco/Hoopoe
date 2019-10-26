@@ -1,5 +1,5 @@
 # Hoopoe - DNS Proxy
-![Hoopoe](data/hoopoe-small.png)  
+![Hoopoe](docs/data/hoopoe-small.png)  
 Hoopoe (pronounced Hu-pu as the [bird](https://en.wikipedia.org/wiki/Hoopoe)) is a simple DNS Proxy for rewrites, written in Go
 
 ## Content
