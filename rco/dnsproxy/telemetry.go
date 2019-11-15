@@ -12,10 +12,11 @@ import (
 
 type TelemetryConfig struct {
 	Address string `mapstructure:"Address"`
+	Enabled bool
 }
 
 type TelemetryServer struct {
-	config *TelemetryConfig
+	config  *TelemetryConfig
 }
 
 func NewTelemetryServer(conf *TelemetryConfig) *TelemetryServer {
@@ -26,17 +27,21 @@ func NewTelemetryServer(conf *TelemetryConfig) *TelemetryServer {
 }
 
 func (s *TelemetryServer) Init() {
+	metricsConfig := metrics.DefaultConfig("Hoopoe")
+	metricsConfig.EnableHostnameLabel = true
+	metricsConfig.EnableServiceLabel = true
+
 	sink, err := prommetrics.NewPrometheusSink()
 	handleError(err, 60)
-	_, _ = metrics.NewGlobal(metrics.DefaultConfig("Hoopoe"), sink)
-	log.Info("Statistics: enabled.")
+	_, _ = metrics.NewGlobal(metricsConfig, sink)
+	log.Info("Metrics: enabled.")
 
 	http.HandleFunc("/", s.handleRoot)
 	http.HandleFunc("/metrics", s.handleMetrics)
 }
 
 func (s *TelemetryServer) ListenAndServe() {
-	if s.config.Address != "" {
+	if globalConfig.Telemetry.Enabled {
 		if err := http.ListenAndServe(s.config.Address, nil); err != nil {
 			handleError(err, 26)
 		}

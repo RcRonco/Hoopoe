@@ -16,10 +16,10 @@ func handleError(e error, ln int) {
 	}
 }
 
+var globalConfig = Config{}
+
 // Proxy server implementation
 type DNSProxy struct {
-	config    Config
-
 	accessLog *log.Logger
 	telemetry *TelemetryServer
 	server    *dns.Server
@@ -40,32 +40,37 @@ func NewDNSProxy(configPath string) *DNSProxy {
 func (d *DNSProxy) Init(confPath string) {
 	var err error
 	// Load the config from json file
-	d.config = BuildConfig(confPath)
+	globalConfig = BuildConfig(confPath)
 
 	// Load Region Map
-	if err, d.regionMap = NewRegionMap(d.config.ClientMapFile); err != nil {
-		log.Errorf("Failed to open client map file: %s, message: %s", d.config.ClientMapFile, err)
+	if err, d.regionMap = NewRegionMap(globalConfig.ClientMapFile); err != nil {
+		log.Errorf("Failed to open client map file: %s, message: %s", globalConfig.ClientMapFile, err)
 		log.Warning("Skipping Client map configuration")
 	}
 
 	// Load all engines and managers
-	rulesEngine := NewRuleEngine(d.config.Rules)
-	rulesEngine.SetScanAll(d.config.ScanAll)
-	d.engines = append(d.engines, NewRuleEngine(d.config.Rules))
+	rulesEngine := NewRuleEngine(globalConfig.Rules)
+	rulesEngine.SetScanAll(globalConfig.ScanAll)
+	d.engines = append(d.engines, NewRuleEngine(globalConfig.Rules))
 	d.engines = append(d.engines, NewTemplateEngine())
-	d.usManager = NewUpstreamsManager(d.config.RemoteHosts, d.config.LBType, &d.regionMap, d.config.UpstreamTimeout)
+	d.usManager = NewUpstreamsManager(
+		globalConfig.RemoteHosts,
+		globalConfig.LBType,
+		&d.regionMap,
+		globalConfig.UpstreamTimeout,
+	)
 
 	// Init Telemetry
-	d.telemetry = NewTelemetryServer(&d.config.Telemetry)
+	d.telemetry = NewTelemetryServer(&globalConfig.Telemetry)
 
 	// Enable Access Log
-	if d.config.AccessLog {
+	if globalConfig.AccessLog {
 		d.accessLog = log.New()
-		file, err := os.OpenFile(d.config.AccessLogPath, os.O_CREATE|os.O_WRONLY, 0666)
+		file, err := os.OpenFile(globalConfig.AccessLogPath, os.O_CREATE|os.O_WRONLY, 0666)
 		if err == nil {
 			d.accessLog.Out = file
 		} else {
-			log.Errorf("Failed to open log file: %s", d.config.AccessLogPath)
+			log.Errorf("Failed to open log file: %s", globalConfig.AccessLogPath)
 		}
 	}
 }
@@ -78,13 +83,13 @@ func (d *DNSProxy) ListenAndServe() error {
 	mux.HandleFunc(".", d.handleQuery)
 
 	// Build the DNS server
-	d.server = &dns.Server{Addr: d.config.LocalAddress, Net: "udp", Handler: mux}
+	d.server = &dns.Server{Addr: globalConfig.LocalAddress, Net: "udp", Handler: mux}
 
 	// Start telemetry server, will exit immediately if telemetry is disabled
 	go d.telemetry.ListenAndServe()
-	log.Infof("Starting Telemetry, listening on: %s", d.config.Telemetry.Address)
+	log.Infof("Starting Telemetry, listening on: %s", globalConfig.Telemetry.Address)
 
-	log.Infof("Starting server, listening on: %s", d.config.LocalAddress)
+	log.Infof("Starting server, listening on: %s", globalConfig.LocalAddress)
 
 	// Start the DNS server
 	return d.server.ListenAndServe()
@@ -93,11 +98,12 @@ func (d *DNSProxy) ListenAndServe() error {
 // handle Query requests that are not PTR
 func (d *DNSProxy) handleQuery(resp dns.ResponseWriter, req *dns.Msg) {
 	// Log the latency of the upstream servers
-	if d.config.Telemetry.Address != "" {
+	if globalConfig.Telemetry.Enabled {
 		defer metrics.MeasureSince([]string{"hoopoe", "request_latency"}, time.Now())
 	}
+
 	// Access Log
-	if d.config.AccessLog {
+	if globalConfig.AccessLog {
 		d.accessLog.Infof("%s Access Record %s", resp.RemoteAddr().String(), req.Question[0].String())
 	}
 
@@ -143,7 +149,7 @@ func (d *DNSProxy) processMsg(resp dns.ResponseWriter, req *dns.Msg) (*EngineQue
 		// Check if engine return that this query need to be blocked
 		if engineQuery.Result == BLOCKED {
 			// Access Log
-			if d.config.AccessLog {
+			if globalConfig.AccessLog {
 				d.accessLog.Infof(
 					"%s: BLOCKED - Record %s",
 					engine.Name(),

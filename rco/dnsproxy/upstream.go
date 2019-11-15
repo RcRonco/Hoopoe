@@ -134,8 +134,24 @@ func (usm *UpstreamsManager) forwardRequest(req *dns.Msg, meta RequestMetadata) 
 			remoteHost = servers[i].Address
 		}
 		resp, _, err := client.Exchange(req, remoteHost)
+		if globalConfig.Telemetry.Enabled {
+			metrics.IncrCounterWithLabels([]string{"hoopoe", "request_count"}, 1, []metrics.Label{
+				{
+					Name:  "remoteHost",
+					Value: remoteHost,
+				},
+			})
+		}
+
 		if err != nil {
-			metrics.SetGauge([]string{remoteHost, "DROPS"}, 1)
+			if globalConfig.Telemetry.Enabled {
+				metrics.IncrCounterWithLabels([]string{"hoopoe", "request_failed"}, 1, []metrics.Label{
+					{
+						Name:  "remoteHost",
+						Value: remoteHost,
+					},
+				})
+			}
 			log.Warnf("Error while contacting server: %s, message: %s", remoteHost, err)
 		} else if len(resp.Answer) > 0 {
 			return resp

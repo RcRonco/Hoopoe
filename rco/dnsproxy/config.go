@@ -43,6 +43,8 @@ func decodeConfig() Config {
 	if err := viper.Unmarshal(&conf); err != nil {
 		log.Fatalf("failed to parse config file, %s", err)
 	}
+	conf.Telemetry.Enabled = conf.Telemetry.Address != ""
+
 	return conf
 }
 
@@ -76,5 +78,6 @@ func BuildConfig(filePath string) Config {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	return decodeConfig()
 }
